@@ -1,0 +1,4 @@
+/.idea
+__pycache__
+dist/
+py_yt.egg-info/
