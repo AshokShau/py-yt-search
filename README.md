@@ -1,6 +1,5 @@
-# YouTube Data Extraction with PY-YT
+# YouTube Data Extraction with py-yt-search
 
-This project demonstrates how to use the `py-yt` library to interact with YouTube's data, including searching for videos, channels, playlists, retrieving video details, extracting comments, transcripts, and fetching search suggestions.
 
 ## Features
 - Search YouTube for videos, channels, and playlists
@@ -11,10 +10,10 @@ This project demonstrates how to use the `py-yt` library to interact with YouTub
 - Retrieve details of YouTube channels and their playlists
 
 ## Installation
-Make sure you have Python installed (>=3.8). Install `py-yt` using:
+Make sure you have Python installed (>=3.8). Install `py-yt-search` using:
 
 ```bash
-pip install git+https://github.com/AshokShau/py-yt@master
+pip install git+https://github.com/AshokShau/py-yt-search@master
 ```
 
 ```bash
@@ -94,7 +93,7 @@ Ensure `asyncio.run(main())` is at the end of the script to handle async executi
 ## Notes
 - The script uses `asyncio` for efficient asynchronous operations.
 - Some operations may require multiple calls to retrieve all available data (e.g., pagination for comments and playlists).
-- `yt-py` provides various search filters to refine results, such as sorting by upload date or filtering by duration.
+- `py-yt-search` provides various search filters to refine results, such as sorting by upload date or filtering by duration.
 
 ## License
 This project is licensed under the MIT License. See the [LICENSE](/LICENSE) file for details.

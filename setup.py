@@ -15,12 +15,12 @@ with open(
 ) as f:
     exec(f.read(), about)
 
-DESCRIPTION = 'A Python package for searching and retrieving YouTube data using py_yt.'
+DESCRIPTION = 'A Python package for searching and retrieving YouTube data using py-yt-search.'
 with open("README.md", encoding="utf8") as readme:
     long_description = readme.read()
 
 setup(
-    name="py-yt-search", # I can't use py-yt because The name 'py-yt' is too similar to an existing project. See https://pypi.org/help/#project-name for more information.
+    name="py-yt-search",
     version=about["__version__"],
     author="AshokShau",
     author_email="<abishnoi69@outlook.com>",
@@ -31,9 +31,9 @@ setup(
     install_requires=[
         'httpx>=0.28.1',
     ],
-    keywords="youtube youtube-api video-search playlist channel search py_yt",
+    keywords="youtube youtube-api video-search playlist channel search py_yt py-yt-search py-yt",
     url="https://github.com/AshokShau/py-yt",
-    download_url="https://github.com/AshokShau/py-yt/releases/latest",
+    download_url="https://github.com/AshokShau/py-yt-search/releases/latest",
     license="MIT",
     classifiers=[
         "Development Status :: 4 - Beta",
@@ -54,9 +54,8 @@ setup(
         "Topic :: Software Development :: Libraries :: Python Modules",
     ],
     project_urls={
-        "Tracker": "https://github.com/AshokShau/py-yt/issues",
-        "Source": "https://github.com/AshokShau/py-yt",
-        "Documentation": "https://github.com/AshokShau/py-yt/wiki",
+        "Tracker": "https://github.com/AshokShau/py-yt-search/issues",
+        "Source": "https://github.com/AshokShau/py-yt-search",
     },
     python_requires=">=3.8",
 )
