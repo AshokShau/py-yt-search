@@ -58,7 +58,6 @@ setup(
         "Topic :: Software Development :: Libraries :: Python Modules",
     ],
     project_urls={
-        "Tracker": "https://github.com/AshokShau/py-yt-search/issues",
         "Source": "https://github.com/AshokShau/py-yt-search",
     },
     python_requires=">=3.8",
