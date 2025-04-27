@@ -20,13 +20,13 @@ def getValue(source: dict, path: list[str]) -> Union[str, int, dict, None]:
 
 
 def getVideoId(video_link: str) -> str:
-    if 'youtu.be' in video_link:
-        if video_link[-1] == '/':
-            return video_link.split('/')[-2]
-        return video_link.split('/')[-1]
-    elif 'youtube.com' in video_link:
-        if '&' not in video_link:
-            return video_link[video_link.index('v=') + 2:]
-        return video_link[video_link.index('v=') + 2: video_link.index('&')]
+    if "youtu.be" in video_link:
+        if video_link[-1] == "/":
+            return video_link.split("/")[-2]
+        return video_link.split("/")[-1]
+    elif "youtube.com" in video_link:
+        if "&" not in video_link:
+            return video_link[video_link.index("v=") + 2 :]
+        return video_link[video_link.index("v=") + 2 : video_link.index("&")]
     else:
         return video_link

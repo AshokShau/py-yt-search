@@ -1,5 +1,11 @@
+import os
+
 import httpx
 from py_yt.core.constants import userAgent
+
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 class RequestCore:
@@ -7,7 +13,10 @@ class RequestCore:
         self.url: str | None = None
         self.data: dict | None = None
         self.timeout: float = timeout
-        self.async_client = httpx.AsyncClient(timeout=self.timeout)
+        self.proxy_url: str | None = os.environ.get("PROXY_URL")
+        client_args = {"timeout": self.timeout, "proxy": self.proxy_url}
+
+        self.async_client = httpx.AsyncClient(**client_args)
 
     async def asyncPostRequest(self) -> httpx.Response | None:
         """Sends an asynchronous POST request."""
@@ -31,7 +40,7 @@ class RequestCore:
         """Sends an asynchronous GET request."""
         if not self.url:
             raise ValueError("URL must be set before making a request.")
-        cookies = {'CONSENT': 'YES+1'}
+        cookies = {"CONSENT": "YES+1"}
         try:
             response = await self.async_client.get(
                 self.url,

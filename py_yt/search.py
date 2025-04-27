@@ -72,8 +72,14 @@ class Search(SearchCore):
         }
     """
 
-    def __init__(self, query: str, limit: int = 20, language: str = 'en', region: str = 'US',
-                 timeout: Optional[int] = None):
+    def __init__(
+        self,
+        query: str,
+        limit: int = 20,
+        language: str = "en",
+        region: str = "US",
+        timeout: Optional[int] = None,
+    ):
         self.searchMode = (True, True, True)
         super().__init__(query, limit, language, region, None, timeout)  # type: ignore
 
@@ -148,8 +154,14 @@ class VideosSearch(SearchCore):
         }
     """
 
-    def __init__(self, query: str, limit: int = 20, language: str = 'en', region: str = 'US',
-                 timeout: Optional[int] = None):
+    def __init__(
+        self,
+        query: str,
+        limit: int = 20,
+        language: str = "en",
+        region: str = "US",
+        timeout: Optional[int] = None,
+    ):
         self.searchMode = (True, False, False)
         super().__init__(query, limit, language, region, SearchMode.videos, timeout)
 
@@ -199,8 +211,14 @@ class ChannelsSearch(SearchCore):
         }
     """
 
-    def __init__(self, query: str, limit: int = 20, language: str = 'en', region: str = 'US',
-                 timeout: Optional[int] = None):
+    def __init__(
+        self,
+        query: str,
+        limit: int = 20,
+        language: str = "en",
+        region: str = "US",
+        timeout: Optional[int] = None,
+    ):
         self.searchMode = (False, True, False)
         super().__init__(query, limit, language, region, SearchMode.channels, timeout)  # type: ignore
 
@@ -263,8 +281,14 @@ class PlaylistsSearch(SearchCore):
         }
     """
 
-    def __init__(self, query: str, limit: int = 20, language: str = 'en', region: str = 'US',
-                 timeout: Optional[int] = None):
+    def __init__(
+        self,
+        query: str,
+        limit: int = 20,
+        language: str = "en",
+        region: str = "US",
+        timeout: Optional[int] = None,
+    ):
         self.searchMode = (False, False, True)
         super().__init__(query, limit, language, region, SearchMode.playlists, timeout)  # type: ignore
 
@@ -350,8 +374,15 @@ class CustomSearch(SearchCore):
         }
     """
 
-    def __init__(self, query: str, search_preferences: str, limit: int = 20, language: str = 'en', region: str = 'US',
-                 timeout: Optional[int] = None):
+    def __init__(
+        self,
+        query: str,
+        search_preferences: str,
+        limit: int = 20,
+        language: str = "en",
+        region: str = "US",
+        timeout: Optional[int] = None,
+    ):
         self.searchMode = (True, True, True)
         super().__init__(query, limit, language, region, search_preferences, timeout)
 
@@ -432,6 +463,13 @@ class ChannelSearch(ChannelSearchCore):
         }
     """
 
-    def __init__(self, query: str, browse_id: str, language: str = 'en', region: str = 'US',
-                 search_preferences: str = "EgZzZWFyY2g%3D", timeout: Optional[int] = None):
+    def __init__(
+        self,
+        query: str,
+        browse_id: str,
+        language: str = "en",
+        region: str = "US",
+        search_preferences: str = "EgZzZWFyY2g%3D",
+        timeout: Optional[int] = None,
+    ):
         super().__init__(query, language, region, search_preferences, browse_id, timeout)  # type: ignore

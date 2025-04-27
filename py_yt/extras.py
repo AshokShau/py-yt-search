@@ -13,9 +13,12 @@ from py_yt.core.video import VideoCore
 
 class Video:
     @staticmethod
-    async def get(video_link: str, result_mode: int = ResultMode.dict, timeout: int = 2,
-                  get_upload_date: bool = False) -> \
-            Union[dict, None]:
+    async def get(
+        video_link: str,
+        result_mode: int = ResultMode.dict,
+        timeout: int = 2,
+        get_upload_date: bool = False,
+    ) -> Union[dict, None]:
         """Fetches information and formats  for the given video link or ID.
         Returns None if video is unavailable.
 
@@ -273,7 +276,9 @@ class Video:
         return video.result
 
     @staticmethod
-    async def getInfo(video_link: str, result_mode: int = ResultMode.dict, timeout: int = 2) -> Union[dict, None]:
+    async def getInfo(
+        video_link: str, result_mode: int = ResultMode.dict, timeout: int = 2
+    ) -> Union[dict, None]:
         """Fetches only information  for the given video link or ID.
         Returns None if video is unavailable.
 
@@ -359,7 +364,9 @@ class Video:
         return video.result
 
     @staticmethod
-    async def getFormats(video_link: str, result_mode: int = ResultMode.dict, timeout: int = 2) -> Union[dict, None]:
+    async def getFormats(
+        video_link: str, result_mode: int = ResultMode.dict, timeout: int = 2
+    ) -> Union[dict, None]:
         """Fetches formats  for the given video link or ID.
         Returns None if video is unavailable.
 
@@ -577,7 +584,12 @@ class Suggestions:
     """
 
     @staticmethod
-    async def get(query: str, language: str = 'en', region: str = 'US', mode: int = ResultMode.dict):
+    async def get(
+        query: str,
+        language: str = "en",
+        region: str = "US",
+        mode: int = ResultMode.dict,
+    ):
         """Fetches & returns the search suggestions for the given query.
 
         Args:
@@ -608,6 +620,7 @@ class Playlist:
     Args:
         playlistLink (str): link of the playlist on YouTube.
     """
+
     playlistLink = None
     videos = []
     info = None
@@ -617,26 +630,26 @@ class Playlist:
     def __init__(self, playlistLink: str):
         self.playlistLink = playlistLink
 
-    '''Fetches more susequent videos of the playlist, and appends to the `videos` list.
+    """Fetches more susequent videos of the playlist, and appends to the `videos` list.
     `hasMoreVideos` bool indicates whether more videos can be fetched or not.
-    '''
+    """
 
     async def getNextVideos(self) -> None:
         if not self.info:
             self.__playlist = PlaylistCore(self.playlistLink, None, ResultMode.dict, 2)
             await self.__playlist._async_next()
             self.info = copy.deepcopy(self.__playlist.playlistComponent)
-            self.videos = self.__playlist.playlistComponent['videos']
+            self.videos = self.__playlist.playlistComponent["videos"]
             self.hasMoreVideos = self.__playlist.continuationKey != None
-            self.info.pop('videos')
+            self.info.pop("videos")
         else:
             await self.__playlist._async_next()
-            self.videos = self.__playlist.playlistComponent['videos']
+            self.videos = self.__playlist.playlistComponent["videos"]
             self.hasMoreVideos = self.__playlist.continuationKey != None
 
     @staticmethod
     async def get(playlistLink: str) -> Union[dict, str, None]:
-        '''Fetches information and videos for the given playlist link.
+        """Fetches information and videos for the given playlist link.
         Returns None if playlist is unavailable.
 
         Args:
@@ -1182,7 +1195,7 @@ class Playlist:
                     }
                 ]
             }
-        '''
+        """
         playlist = PlaylistCore(playlistLink, None, ResultMode.dict, 2)
         await playlist.async_create()
         return playlist.playlistComponent
@@ -1253,13 +1266,13 @@ class Playlist:
                 }
             }
         """
-        playlist = PlaylistCore(playlistLink, 'getInfo', ResultMode.dict, 2)
+        playlist = PlaylistCore(playlistLink, "getInfo", ResultMode.dict, 2)
         await playlist.async_create()
         return playlist.playlistComponent
 
     @staticmethod
     async def getVideos(playlistLink: str) -> Union[dict, str, None]:
-        '''Fetches only videos in the given playlist from link.
+        """Fetches only videos in the given playlist from link.
         Returns None if playlist is unavailable.
 
         Args:
@@ -1754,8 +1767,8 @@ class Playlist:
                     }
                 ]
             }
-        '''
-        playlist = PlaylistCore(playlistLink, 'getVideos', ResultMode.dict, 2)
+        """
+        playlist = PlaylistCore(playlistLink, "getVideos", ResultMode.dict, 2)
         await playlist.async_create()
         return playlist.playlistComponent
 
@@ -1836,7 +1849,14 @@ class Hashtag(HashtagCore):
         }
     """
 
-    def __init__(self, hashtag: str, limit: int = 60, language: str = 'en', region: str = 'US', timeout: int = None):
+    def __init__(
+        self,
+        hashtag: str,
+        limit: int = 60,
+        language: str = "en",
+        region: str = "US",
+        timeout: int = None,
+    ):
         super().__init__(hashtag, limit, language, region, timeout)
 
     async def next(self) -> dict:
@@ -1851,7 +1871,7 @@ class Hashtag(HashtagCore):
         await self._asyncMakeRequest()
         self._getComponents()
         return {
-            'result': self.resultComponents,
+            "result": self.resultComponents,
         }
 
 
@@ -1889,7 +1909,9 @@ class Transcript:
 
 
 class Channel(ChannelCore):
-    def __init__(self, channel_id: str, request_type: str = ChannelRequestType.playlists):
+    def __init__(
+        self, channel_id: str, request_type: str = ChannelRequestType.playlists
+    ):
         super().__init__(channel_id, request_type)
 
     async def init(self):
