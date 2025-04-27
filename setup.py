@@ -7,15 +7,18 @@ base_path = os.path.abspath(os.path.dirname(__file__))
 about: dict = {}
 
 with open(
-        os.path.join(
-            base_path,
-            'py_yt',
-            '__version__.py',
-        ), encoding='utf-8',
+    os.path.join(
+        base_path,
+        "py_yt",
+        "__version__.py",
+    ),
+    encoding="utf-8",
 ) as f:
     exec(f.read(), about)
 
-DESCRIPTION = 'A Python package for searching and retrieving YouTube data using py-yt-search.'
+DESCRIPTION = (
+    "A Python package for searching and retrieving YouTube data using py-yt-search."
+)
 with open("README.md", encoding="utf8") as readme:
     long_description = readme.read()
 
@@ -29,7 +32,8 @@ setup(
     long_description=long_description,
     packages=find_packages(),
     install_requires=[
-        'httpx>=0.28.1',
+        "httpx>=0.28.1",
+        "python-dotenv>=1.1.0",
     ],
     keywords="youtube youtube-api video-search playlist channel search py_yt py-yt-search py-yt",
     url="https://github.com/AshokShau/py-yt",

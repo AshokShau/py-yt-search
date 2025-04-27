@@ -2,3 +2,4 @@
 __pycache__
 dist/
 py_yt_search.egg-info/
+.env

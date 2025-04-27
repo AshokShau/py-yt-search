@@ -3,8 +3,16 @@ import json
 from typing import Union
 from urllib.parse import urlencode
 
-from py_yt.core.constants import requestPayload, searchKey, ResultMode, videoElementKey, channelElementKey, \
-    playlistElementKey, shelfElementKey, richItemKey
+from py_yt.core.constants import (
+    requestPayload,
+    searchKey,
+    ResultMode,
+    videoElementKey,
+    channelElementKey,
+    playlistElementKey,
+    shelfElementKey,
+    richItemKey,
+)
 from py_yt.core.requests import RequestCore
 from py_yt.handlers.componenthandler import ComponentHandler
 from py_yt.handlers.requesthandler import RequestHandler
@@ -15,7 +23,15 @@ class SearchCore(RequestCore, RequestHandler, ComponentHandler):
     responseSource = None
     resultComponents = []
 
-    def __init__(self, query: str, limit: int, language: str, region: str, searchPreferences: str, timeout: int):
+    def __init__(
+        self,
+        query: str,
+        limit: int,
+        language: str,
+        region: str,
+        searchPreferences: str,
+        timeout: int,
+    ):
         super().__init__()
         self.query = query
         self.limit = limit
@@ -30,20 +46,26 @@ class SearchCore(RequestCore, RequestHandler, ComponentHandler):
         self._parseSource()
 
     def _getRequestBody(self):
-        ''' Fixes #47 '''
+        """Fixes #47"""
         requestBody = copy.deepcopy(requestPayload)
-        requestBody['query'] = self.query
-        requestBody['client'] = {
-            'hl': self.language,
-            'gl': self.region,
+        requestBody["query"] = self.query
+        requestBody["client"] = {
+            "hl": self.language,
+            "gl": self.region,
         }
         if self.searchPreferences:
-            requestBody['params'] = self.searchPreferences
+            requestBody["params"] = self.searchPreferences
         if self.continuationKey:
-            requestBody['continuation'] = self.continuationKey
-        self.url = 'https://www.youtube.com/youtubei/v1/search' + '?' + urlencode({
-            'key': searchKey,
-        })
+            requestBody["continuation"] = self.continuationKey
+        self.url = (
+            "https://www.youtube.com/youtubei/v1/search"
+            + "?"
+            + urlencode(
+                {
+                    "key": searchKey,
+                }
+            )
+        )
         self.data = requestBody
 
     def _makeRequest(self) -> None:
@@ -52,7 +74,7 @@ class SearchCore(RequestCore, RequestHandler, ComponentHandler):
         try:
             self.response = request.text
         except:
-            raise Exception('ERROR: Could not make request.')
+            raise Exception("ERROR: Could not make request.")
 
     async def _makeAsyncRequest(self) -> None:
         self._getRequestBody()
@@ -60,7 +82,7 @@ class SearchCore(RequestCore, RequestHandler, ComponentHandler):
         try:
             self.response = request.text
         except:
-            raise Exception('ERROR: Could not make request.')
+            raise Exception("ERROR: Could not make request.")
 
     def result(self, mode: int = ResultMode.dict) -> Union[str, dict]:
         """Returns the search result.
@@ -72,9 +94,9 @@ class SearchCore(RequestCore, RequestHandler, ComponentHandler):
             Union[str, dict]: Returns JSON or dictionary.
         """
         if mode == ResultMode.json:
-            return json.dumps({'result': self.resultComponents}, indent=4)
+            return json.dumps({"result": self.resultComponents}, indent=4)
         elif mode == ResultMode.dict:
-            return {'result': self.resultComponents}
+            return {"result": self.resultComponents}
 
     def _next(self) -> bool:
         """Gets the subsequent search result. Call result
@@ -104,10 +126,12 @@ class SearchCore(RequestCore, RequestHandler, ComponentHandler):
         self._parseSource()
         self._getComponents(*self.searchMode)
         return {
-            'result': self.resultComponents,
+            "result": self.resultComponents,
         }
 
-    def _getComponents(self, findVideos: bool, findChannels: bool, findPlaylists: bool) -> None:
+    def _getComponents(
+        self, findVideos: bool, findChannels: bool, findPlaylists: bool
+    ) -> None:
         self.resultComponents = []
         for element in self.responseSource:
             if videoElementKey in element.keys() and findVideos:
@@ -117,12 +141,16 @@ class SearchCore(RequestCore, RequestHandler, ComponentHandler):
             if playlistElementKey in element.keys() and findPlaylists:
                 self.resultComponents.append(self._getPlaylistComponent(element))
             if shelfElementKey in element.keys() and findVideos:
-                for shelfElement in self._getShelfComponent(element)['elements']:
+                for shelfElement in self._getShelfComponent(element)["elements"]:
                     self.resultComponents.append(
-                        self._getVideoComponent(shelfElement, shelfTitle=self._getShelfComponent(element)['title']))
+                        self._getVideoComponent(
+                            shelfElement,
+                            shelfTitle=self._getShelfComponent(element)["title"],
+                        )
+                    )
             if richItemKey in element.keys() and findVideos:
-                richItemElement = self._getValue(element, [richItemKey, 'content'])
-                ''' Initial fallback handling for VideosSearch '''
+                richItemElement = self._getValue(element, [richItemKey, "content"])
+                """ Initial fallback handling for VideosSearch """
                 if videoElementKey in richItemElement.keys():
                     videoComponent = self._getVideoComponent(richItemElement)
                     self.resultComponents.append(videoComponent)
