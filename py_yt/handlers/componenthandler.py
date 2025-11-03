@@ -68,9 +68,10 @@ class ComponentHandler:
             },
         }
         component["link"] = "https://www.youtube.com/watch?v=" + component["id"]
-        component["channel"]["link"] = (
-            "https://www.youtube.com/channel/" + component["channel"]["id"]
-        )
+        if component["channel"]["id"]:
+            component["channel"]["link"] = (
+                "https://www.youtube.com/channel/" + component["channel"]["id"]
+            )
         component["shelfTitle"] = shelfTitle
         return component
 
@@ -128,9 +129,10 @@ class ComponentHandler:
             ),
         }
         component["link"] = "https://www.youtube.com/playlist?list=" + component["id"]
-        component["channel"]["link"] = (
-            "https://www.youtube.com/channel/" + component["channel"]["id"]
-        )
+        if component["channel"]["id"]:
+            component["channel"]["link"] = (
+                "https://www.youtube.com/channel/" + component["channel"]["id"]
+            )
         return component
 
     def _getVideoFromChannelSearch(self, elements: list) -> list:
