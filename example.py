@@ -1,6 +1,6 @@
 import asyncio
 
-from py_yt import Playlist, Video, Transcript, Comments, Channel, Suggestions, Hashtag
+from py_yt import Playlist, Video, Transcript, Channel, Suggestions, Hashtag
 from py_yt import (
     Search,
     VideosSearch,
@@ -171,17 +171,6 @@ async def main():
     result = await hashtag.next()
     print(result)
 
-    comments = Comments("_ZdsmLgCVdU")
-
-    await comments.getNextComments()
-    print(len(comments.comments["result"]))
-
-    while len(comments.comments["result"]) < 100:
-        await comments.getNextComments()
-        print(len(comments.comments["result"]))
-
-    print("Found all comments")
-
     print(await Transcript.get("https://www.youtube.com/watch?v=L7kF4MXXCoA"))
 
     url = "https://www.youtube.com/watch?v=-1xu0IP35FI"
@@ -206,3 +195,4 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+

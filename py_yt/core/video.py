@@ -10,19 +10,19 @@ from py_yt.core.requests import RequestCore
 CLIENTS = {
     "MWEB": {
         "context": {
-            "client": {"clientName": "MWEB", "clientVersion": "2.20211109.01.00"}
+            "client": {"clientName": "MWEB", "clientVersion": "2.20240425.01.00"}
         },
         "api_key": "AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8",
     },
     "ANDROID": {
-        "context": {"client": {"clientName": "ANDROID", "clientVersion": "16.20"}},
+        "context": {"client": {"clientName": "ANDROID", "clientVersion": "19.02.39"}},
         "api_key": "AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8",
     },
     "ANDROID_EMBED": {
         "context": {
             "client": {
                 "clientName": "ANDROID",
-                "clientVersion": "16.20",
+                "clientVersion": "19.02.39",
                 "clientScreen": "EMBED",
             }
         },
@@ -89,6 +89,8 @@ class VideoCore(RequestCore):
     async def async_create(self):
         self.prepare_innertube_request()
         response = await self.asyncPostRequest()
+        if response is None:
+            raise Exception("The request returned an empty response.")
         self.response = response.text
         if response.status_code == 200:
             self.post_request_processing()
@@ -130,10 +132,7 @@ class VideoCore(RequestCore):
     def __getVideoComponent(self, mode: str) -> None:
         videoComponent = {}
         if mode in ["getInfo", None]:
-            try:
-                responseSource = self.responseSource
-            except:
-                responseSource = None
+            responseSource = getattr(self, "responseSource", None)
             if self.enableHTML:
                 responseSource = self.HTMLresponseSource
             component = {

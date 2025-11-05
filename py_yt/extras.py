@@ -2,7 +2,6 @@ import copy
 from typing import Union
 
 from py_yt.core.channel import ChannelCore
-from py_yt.core.comments import CommentsCore
 from py_yt.core.constants import ResultMode, ChannelRequestType
 from py_yt.core.hashtag import HashtagCore
 from py_yt.core.playlist import PlaylistCore
@@ -264,15 +263,10 @@ class Video:
                     ]
                 }
         """
-        # video = VideoCore(video_link, None, result_mode, timeout, get_upload_date)
-        # if get_upload_date:
-        #     await video.async_html_create()
-        # await video.async_create()
-        # return video.result
-
-        video = VideoCore(video_link, "getInfo", result_mode, timeout, True)
-        await video.async_html_create()
-        video.post_request_only_html_processing()
+        video = VideoCore(video_link, None, result_mode, timeout, get_upload_date)
+        if get_upload_date:
+            await video.async_html_create()
+        await video.async_create()
         return video.result
 
     @staticmethod
@@ -1873,31 +1867,6 @@ class Hashtag(HashtagCore):
         return {
             "result": self.resultComponents,
         }
-
-
-class Comments:
-    comments = []
-    hasMoreComments = True
-    __comments = None
-
-    def __init__(self, playlistLink: str, timeout: int = None):
-        self.timeout = timeout
-        self.playlistLink = playlistLink
-
-    async def getNextComments(self) -> None:
-        if self.__comments is None:
-            self.__comments = CommentsCore(self.playlistLink)
-            await self.__comments.async_create()
-        else:
-            await self.__comments.async_create_next()
-        self.comments = self.__comments.commentsComponent
-        self.hasMoreComments = self.__comments.continuationKey is not None
-
-    @staticmethod
-    async def get(playlistLink: str) -> Union[dict, str, None]:
-        pc = CommentsCore(playlistLink)
-        await pc.async_create()
-        return pc.commentsComponent
 
 
 class Transcript:

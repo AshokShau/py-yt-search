@@ -73,7 +73,7 @@ class TranscriptCore(RequestCore):
         }
 
     def extract_transcript(self):
-        response = self.data.json()
+        response = self.data
         transcripts = getValue(
             response,
             [
@@ -91,15 +91,19 @@ class TranscriptCore(RequestCore):
         )
         segments = []
         languages = []
-        for segment in transcripts:
-            segment = getValue(segment, ["transcriptSegmentRenderer"])
-            j = {
-                "startMs": getValue(segment, ["startMs"]),
-                "endMs": getValue(segment, ["endMs"]),
-                "text": getValue(segment, ["snippet", "runs", 0, "text"]),
-                "startTime": getValue(segment, ["startTimeText", "simpleText"]),
-            }
-            segments.append(j)
+        if transcripts:
+            for segment in transcripts:
+                segment = getValue(segment, ["transcriptSegmentRenderer"])
+                if segment:
+                    j = {
+                        "startMs": getValue(segment, ["startMs"]),
+                        "endMs": getValue(segment, ["endMs"]),
+                        "text": getValue(segment, ["snippet", "runs", 0, "text"]),
+                        "startTime": getValue(
+                            segment, ["startTimeText", "simpleText"]
+                        ),
+                    }
+                    segments.append(j)
         langs = getValue(
             response,
             [
@@ -138,5 +142,7 @@ class TranscriptCore(RequestCore):
             if end:
                 return
         self.prepare_transcript_request()
-        self.data = await self.asyncPostRequest()
-        self.extract_transcript()
+        response = await self.asyncPostRequest()
+        if response:
+            self.data = response.json()
+            self.extract_transcript()
