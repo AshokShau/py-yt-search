@@ -90,7 +90,13 @@ class VideoCore(RequestCore):
         self.prepare_innertube_request()
         response = await self.asyncPostRequest()
         if response is None:
-            raise Exception("The request returned an empty response.")
+            video_link = getattr(self, "video_link", None)
+            request_params = getattr(self, "innertube_request", None)
+            raise Exception(
+                f"The request returned an empty response. "
+                f"Video link: {video_link}, Request parameters: {request_params}"
+            )
+
         self.response = response.text
         if response.status_code == 200:
             self.post_request_processing()
