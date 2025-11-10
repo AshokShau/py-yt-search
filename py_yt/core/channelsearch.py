@@ -43,10 +43,12 @@ class ChannelSearchCore(RequestCore, ComponentHandler):
                 "tabs"
             ][-1]
             if "expandableTabRenderer" in last_tab:
-                self.response = last_tab["expandableTabRenderer"]["content"][
-                    "sectionListRenderer"
-                ]["contents"]
-            else:
+                renderer = last_tab["expandableTabRenderer"]
+                if "content" in renderer:
+                    self.response = renderer["content"]["sectionListRenderer"]["contents"]
+                else:
+                    self.response = []
+            elif "tabRenderer" in last_tab:
                 tab_renderer = last_tab["tabRenderer"]
                 if "content" in tab_renderer:
                     self.response = tab_renderer["content"]["sectionListRenderer"][
@@ -54,6 +56,8 @@ class ChannelSearchCore(RequestCore, ComponentHandler):
                     ]
                 else:
                     self.response = []
+            else:
+                self.response = []
         except:
             raise Exception("ERROR: Could not parse YouTube response.")
 
@@ -97,3 +101,4 @@ class ChannelSearchCore(RequestCore, ComponentHandler):
             return json.dumps({"result": self.response}, indent=4)
         elif mode == ResultMode.dict:
             return {"result": self.response}
+
