@@ -79,9 +79,9 @@ class SearchCore(RequestCore, RequestHandler, ComponentHandler):
     async def _makeAsyncRequest(self) -> None:
         self._getRequestBody()
         request = await self.asyncPostRequest()
-        try:
+        if request:
             self.response = request.text
-        except:
+        else:
             raise Exception("ERROR: Could not make request.")
 
     def result(self, mode: int = ResultMode.dict) -> Union[str, dict]:
