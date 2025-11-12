@@ -121,8 +121,9 @@ async def main():
     print(video)
     videoInfo = await Video.getInfo("https://youtu.be/z0GKGpObgPY")
     print(videoInfo)
-    # videoFormats = await Video.getFormats('z0GKGpObgPY')
-    # print(videoFormats)
+
+    videoInfo = await Video.getInfo("https://music.youtube.com/watch?v=RLsYNh7GN-k&si=tgb4LsBN8zEU-iST")
+    print(videoInfo)
 
     """
     Getting information about playlist or videos in it using link.

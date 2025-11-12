@@ -1,7 +1,7 @@
 import copy
 import json
 from typing import Union
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlparse, parse_qs
 
 from py_yt.core.componenthandler import getVideoId, getValue
 from py_yt.core.constants import searchKey, ResultMode
@@ -43,6 +43,18 @@ CLIENTS = {
 }
 
 
+def _get_cleaned_url(video_link: str) -> str:
+    """
+    Cleans the YouTube video link by removing any extra parameters,
+    ensuring only the video ID is present.
+    """
+    parsed_url = urlparse(video_link)
+    video_id = parse_qs(parsed_url.query).get("v")
+    if video_id:
+        return f"https://www.youtube.com/watch?v={video_id[0]}"
+    return video_link
+
+
 class VideoCore(RequestCore):
     def __init__(
         self,
@@ -57,7 +69,7 @@ class VideoCore(RequestCore):
         self.timeout = timeout
         self.resultMode = result_mode
         self.componentMode = component_mode
-        self.videoLink = video_link
+        self.videoLink = _get_cleaned_url(video_link)
         self.enableHTML = enable_html
         self.overridedClient = overrided_client
 
