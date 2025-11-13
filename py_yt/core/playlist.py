@@ -2,7 +2,7 @@ import copy
 import json
 import re
 from typing import Iterable, Mapping, TypeVar, Union, List
-from urllib.parse import urlencode
+from urllib.parse import urlencode, parse_qs, urlparse
 
 from py_yt.core.constants import (
     ResultMode,
@@ -72,7 +72,10 @@ class PlaylistCore(RequestCore):
     def prepare_first_request(self):
         self.url.strip("/")
 
-        _id = re.search(r"(?<=list=)([a-zA-Z0-9+/=_-]+)", self.url).group()
+        try:
+            _id = parse_qs(urlparse(self.url).query)["list"][0]
+        except:
+            _id = re.search(r"(?<=list=)([a-zA-Z0-9+/=_-]+)", self.url).group()
         browseId = "VL" + _id if not _id.startswith("VL") else _id
 
         self.url = (

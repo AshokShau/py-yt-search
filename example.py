@@ -158,6 +158,11 @@ async def main():
     )
     print(playlist)
 
+    playlist = await Playlist.get(
+        "https://youtube.com/playlist?list=PL2WDrOkJHGRsEWWDiHfQujGm8XwTQGryu&si=Hv3mvAeT9W4hIJXq"
+    )
+    print(playlist)
+
     """
     Getting search suggestions from YouTube.
     You may show search suggestions to users before making any search.
