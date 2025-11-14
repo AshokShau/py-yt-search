@@ -11,6 +11,7 @@ class TranscriptCore(RequestCore):
         super().__init__()
         self.videoLink = videoLink
         self.key = key
+        self.result = {}
 
     def prepare_params_request(self):
         self.url = (
@@ -21,8 +22,7 @@ class TranscriptCore(RequestCore):
         self.data = copy.deepcopy(requestPayload)
         self.data["videoId"] = getVideoId(self.videoLink)
 
-    def extract_continuation_key(self, r):
-        j = r.json()
+    def extract_continuation_key(self, j):
         panels = getValue(j, ["engagementPanels"])
         if not panels:
             raise Exception(
@@ -72,8 +72,7 @@ class TranscriptCore(RequestCore):
             "params": self.key,
         }
 
-    def extract_transcript(self):
-        response = self.data.json()
+    def extract_transcript(self, response):
         transcripts = getValue(
             response,
             [
@@ -93,6 +92,8 @@ class TranscriptCore(RequestCore):
         languages = []
         for segment in transcripts:
             segment = getValue(segment, ["transcriptSegmentRenderer"])
+            if segment is None:
+                continue
             j = {
                 "startMs": getValue(segment, ["startMs"]),
                 "endMs": getValue(segment, ["endMs"]),
@@ -134,9 +135,11 @@ class TranscriptCore(RequestCore):
         if not self.key:
             self.prepare_params_request()
             r = await self.asyncPostRequest()
-            end = self.extract_continuation_key(r)
-            if end:
-                return
+            if r:
+                end = self.extract_continuation_key(await r.json())
+                if end:
+                    return
         self.prepare_transcript_request()
-        self.data = await self.asyncPostRequest()
-        self.extract_transcript()
+        response = await self.asyncPostRequest()
+        if response:
+            self.extract_transcript(await response.json())

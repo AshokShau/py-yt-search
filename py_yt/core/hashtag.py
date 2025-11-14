@@ -2,9 +2,7 @@ import copy
 import json
 from typing import Union
 from urllib.parse import urlencode
-from urllib.request import Request, urlopen
-
-import httpx
+import aiohttp
 
 from py_yt.core.constants import (
     videoElementKey,
@@ -34,9 +32,16 @@ class HashtagCore(ComponentHandler):
         self.limit = limit
         self.language = language
         self.region = region
-        self.timeout = timeout
+        self.timeout = aiohttp.ClientTimeout(total=timeout)
         self.continuationKey = None
         self.params = None
+        self.session = aiohttp.ClientSession(timeout=self.timeout)
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        await self.session.close()
 
     def result(self, mode: int = ResultMode.dict) -> Union[str, dict]:
         """Returns the hashtag videos.
@@ -50,56 +55,6 @@ class HashtagCore(ComponentHandler):
         elif mode == ResultMode.dict:
             return {"result": self.resultComponents}
 
-    def next(self) -> bool:
-        """Gets the videos from the next page. Call result
-        Returns:
-            bool: Returns True if getting more results was successful.
-        """
-        self.response = None
-        self.resultComponents = []
-        if self.continuationKey:
-            self._makeRequest()
-            self._getComponents()
-        if self.resultComponents:
-            return True
-        return False
-
-    def _getParams(self) -> None:
-        requestBody = copy.deepcopy(requestPayload)
-        requestBody["query"] = "#" + self.hashtag
-        requestBody["client"] = {
-            "hl": self.language,
-            "gl": self.region,
-        }
-        requestBodyBytes = json.dumps(requestBody).encode("utf_8")
-        request = Request(
-            "https://www.youtube.com/youtubei/v1/search"
-            + "?"
-            + urlencode(
-                {
-                    "key": searchKey,
-                }
-            ),
-            data=requestBodyBytes,
-            headers={
-                "Content-Type": "application/json; charset=utf-8",
-                "Content-Length": len(requestBodyBytes),
-                "User-Agent": userAgent,
-            },
-        )
-        try:
-            response = urlopen(request, timeout=self.timeout).read().decode("utf_8")
-        except:
-            raise Exception("ERROR: Could not make request.")
-        content = self._getValue(json.loads(response), contentPath)
-        for item in self._getValue(content, [0, "itemSectionRenderer", "contents"]):
-            if hashtagElementKey in item.keys():
-                self.params = self._getValue(
-                    item[hashtagElementKey],
-                    ["onTapCommand", "browseEndpoint", "params"],
-                )
-                return
-
     async def _asyncGetParams(self) -> None:
         requestBody = copy.deepcopy(requestPayload)
         requestBody["query"] = "#" + self.hashtag
@@ -108,22 +63,20 @@ class HashtagCore(ComponentHandler):
             "gl": self.region,
         }
         try:
-            async with httpx.AsyncClient() as client:
-                response = await client.post(
-                    "https://www.youtube.com/youtubei/v1/search",
-                    params={
-                        "key": searchKey,
-                    },
-                    headers={
-                        "User-Agent": userAgent,
-                    },
-                    json=requestBody,
-                    timeout=self.timeout,
-                )
-                response = response.json()
+            async with self.session.post(
+                "https://www.youtube.com/youtubei/v1/search",
+                params={
+                    "key": searchKey,
+                },
+                headers={
+                    "User-Agent": userAgent,
+                },
+                json=requestBody,
+            ) as response:
+                response_json = await response.json()
         except:
             raise Exception("ERROR: Could not make request.")
-        content = self._getValue(response, contentPath)
+        content = self._getValue(response_json, contentPath)
         for item in self._getValue(content, [0, "itemSectionRenderer", "contents"]):
             if hashtagElementKey in item.keys():
                 self.params = self._getValue(
@@ -131,41 +84,6 @@ class HashtagCore(ComponentHandler):
                     ["onTapCommand", "browseEndpoint", "params"],
                 )
                 return
-
-    def _makeRequest(self) -> None:
-        if self.params == None:
-            return
-        requestBody = copy.deepcopy(requestPayload)
-        requestBody["browseId"] = hashtagBrowseKey
-        requestBody["params"] = self.params
-        requestBody["client"] = {
-            "hl": self.language,
-            "gl": self.region,
-        }
-        if self.continuationKey:
-            requestBody["continuation"] = self.continuationKey
-        requestBodyBytes = json.dumps(requestBody).encode("utf_8")
-        request = Request(
-            "https://www.youtube.com/youtubei/v1/browse"
-            + "?"
-            + urlencode(
-                {
-                    "key": searchKey,
-                }
-            ),
-            data=requestBodyBytes,
-            headers={
-                "Content-Type": "application/json; charset=utf-8",
-                "Content-Length": len(requestBodyBytes),
-                "User-Agent": userAgent,
-            },
-        )
-        try:
-            self.response = (
-                urlopen(request, timeout=self.timeout).read().decode("utf_8")
-            )
-        except:
-            raise Exception("ERROR: Could not make request.")
 
     async def _asyncMakeRequest(self) -> None:
         if self.params == None:
@@ -180,19 +98,17 @@ class HashtagCore(ComponentHandler):
         if self.continuationKey:
             requestBody["continuation"] = self.continuationKey
         try:
-            async with httpx.AsyncClient() as client:
-                response = await client.post(
-                    "https://www.youtube.com/youtubei/v1/browse",
-                    params={
-                        "key": searchKey,
-                    },
-                    headers={
-                        "User-Agent": userAgent,
-                    },
-                    json=requestBody,
-                    timeout=self.timeout,
-                )
-                self.response = response.content
+            async with self.session.post(
+                "https://www.youtube.com/youtubei/v1/browse",
+                params={
+                    "key": searchKey,
+                },
+                headers={
+                    "User-Agent": userAgent,
+                },
+                json=requestBody,
+            ) as response:
+                self.response = await response.read()
         except:
             raise Exception("ERROR: Could not make request.")
 

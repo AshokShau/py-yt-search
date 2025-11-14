@@ -81,12 +81,13 @@ class SuggestionsCore(RequestCore):
 
     def __parseSource(self) -> None:
         try:
-            self.responseSource = json.loads(
-                self.response[self.response.index("(") + 1 : self.response.index(")")]
-            )
+            self.responseSource = json.loads(self.response[self.response.find("(") + 1 : self.response.rfind(")")])
+        except json.JSONDecodeError:
+            self.responseSource = []
         except:
             raise Exception("ERROR: Could not parse YouTube response.")
 
     async def __makeAsyncRequest(self) -> None:
         request = await self.asyncGetRequest()
-        self.response = request.text
+        if request:
+            self.response = await request.text()

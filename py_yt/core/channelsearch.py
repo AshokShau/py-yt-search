@@ -43,9 +43,12 @@ class ChannelSearchCore(RequestCore, ComponentHandler):
                 "tabs"
             ][-1]
             if "expandableTabRenderer" in last_tab:
-                self.response = last_tab["expandableTabRenderer"]["content"][
-                    "sectionListRenderer"
-                ]["contents"]
+                if "content" in last_tab["expandableTabRenderer"]:
+                    self.response = last_tab["expandableTabRenderer"]["content"][
+                        "sectionListRenderer"
+                    ]["contents"]
+                else:
+                    self.response = []
             else:
                 tab_renderer = last_tab["tabRenderer"]
                 if "content" in tab_renderer:
@@ -82,7 +85,7 @@ class ChannelSearchCore(RequestCore, ComponentHandler):
 
         request = await self.asyncPostRequest()
         try:
-            self.response = request.json()
+            self.response = await request.json()
         except:
             raise Exception("ERROR: Could not make request.")
 

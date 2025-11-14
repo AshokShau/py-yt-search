@@ -1,7 +1,7 @@
 import copy
 import json
 from typing import Union
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlparse, parse_qs
 
 from py_yt.core.componenthandler import getVideoId, getValue
 from py_yt.core.constants import searchKey, ResultMode
@@ -42,6 +42,16 @@ CLIENTS = {
     },
 }
 
+def _get_cleaned_url(video_link: str) -> str:
+    """
+    Cleans the YouTube video link by removing any extra parameters,
+    ensuring only the video ID is present.
+    """
+    parsed_url = urlparse(video_link)
+    video_id = parse_qs(parsed_url.query).get("v")
+    if video_id:
+        return f"https://www.youtube.com/watch?v={video_id[0]}"
+    return video_link
 
 class VideoCore(RequestCore):
     def __init__(
@@ -57,9 +67,10 @@ class VideoCore(RequestCore):
         self.timeout = timeout
         self.resultMode = result_mode
         self.componentMode = component_mode
-        self.videoLink = video_link
+        self.videoLink = _get_cleaned_url(video_link)
         self.enableHTML = enable_html
         self.overridedClient = overrided_client
+        self.result = None
 
     # We call this when we use only HTML
     def post_request_only_html_processing(self):
@@ -89,11 +100,12 @@ class VideoCore(RequestCore):
     async def async_create(self):
         self.prepare_innertube_request()
         response = await self.asyncPostRequest()
-        self.response = response.text
-        if response.status_code == 200:
-            self.post_request_processing()
-        else:
-            raise Exception("ERROR: Invalid status code.")
+        if response:
+            self.response = await response.text()
+            if response.status == 200:
+                self.post_request_processing()
+            else:
+                raise Exception("ERROR: Invalid status code.")
 
     def prepare_html_request(self):
         self.url = (
@@ -113,7 +125,8 @@ class VideoCore(RequestCore):
     async def async_html_create(self):
         self.prepare_html_request()
         response = await self.asyncPostRequest()
-        self.HTMLresponseSource = response.json()
+        if response:
+            self.HTMLresponseSource = await response.json()
 
     def __parseSource(self) -> None:
         try:

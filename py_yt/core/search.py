@@ -80,7 +80,7 @@ class SearchCore(RequestCore, RequestHandler, ComponentHandler):
         self._getRequestBody()
         request = await self.asyncPostRequest()
         try:
-            self.response = request.text
+            self.response = await request.text()
         except:
             raise Exception("ERROR: Could not make request.")
 
