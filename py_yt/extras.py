@@ -617,20 +617,23 @@ class Playlist:
         self.videos = []
         self.info = None
         self.hasMoreVideos = True
-        self.__playlist = None
+        self.playlist_core = None
 
     async def __aenter__(self):
-        self.__playlist = PlaylistCore(self.playlistLink, None, ResultMode.dict, self.timeout)
-        await self.__playlist.async_create()
-        self.info = copy.deepcopy(self.__playlist.playlistComponent)
-        self.videos = self.__playlist.playlistComponent["videos"]
-        self.hasMoreVideos = self.__playlist.continuationKey is not None
+        self.playlist_core = await PlaylistCore(
+            self.playlistLink, None, ResultMode.dict, self.timeout
+        ).__aenter__()
+        await self.playlist_core.async_create()
+        self.info = copy.deepcopy(self.playlist_core.playlistComponent)
+        self.videos = self.playlist_core.playlistComponent["videos"]
+        self.hasMoreVideos = self.playlist_core.continuationKey is not None
         if "videos" in self.info:
             self.info.pop("videos")
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
-        await self.__playlist.close()
+        if self.playlist_core:
+            await self.playlist_core.__aexit__(exc_type, exc_val, exc_tb)
 
     async def getNextVideos(self) -> None:
         """Fetches more susequent videos of the playlist, and appends to the `videos` list.
@@ -638,87 +641,12 @@ class Playlist:
         """
         if not self.hasMoreVideos:
             return
-        await self.__playlist._async_next()
-        self.videos.extend(self.__playlist.playlistComponent["videos"])
-        self.hasMoreVideos = self.__playlist.continuationKey is not None
+        await self.playlist_core._async_next()
+        self.videos.extend(self.playlist_core.playlistComponent["videos"])
+        self.hasMoreVideos = self.playlist_core.continuationKey is not None
 
 
-class Hashtag(HashtagCore):
-    """Fetches videos for the given hashtag.
-
-    Args:
-        query (str): Sets the search query.
-        limit (int, optional): Sets limit to the number of results. Defaults to 20.
-        language (str, optional): Sets the result language. Defaults to 'en'.
-        region (str, optional): Sets the result region. Defaults to 'US'.
-
-    Examples:
-        >>> hashtag = Hashtags('ncs', limit = 1)
-        >>> result = await hashtag.next()
-        >>> print(result)
-        {
-            "result": [
-                {
-                    "type": "video",
-                    "id": "c9FF4Tfj2w8",
-                    "title": "Ascence - About You [NCS 1 HOUR]",
-                    "publishedTime": "1 year ago",
-                    "duration": "1:00:00",
-                    "viewCount": {
-                        "text": "226,354 views",
-                        "short": "226K views"
-                    },
-                    "thumbnails": [
-                        {
-                            "url": "https://i.ytimg.com/vi/c9FF4Tfj2w8/hqdefault.jpg?sqp=-oaymwEbCKgBEF5IVfKriqkDDggBFQAAiEIYAXABwAEG&rs=AOn4CLA8V3x_PigkymVQxQcptr8Wfz20-A",
-                            "width": 168,
-                            "height": 94
-                        },
-                        {
-                            "url": "https://i.ytimg.com/vi/c9FF4Tfj2w8/hqdefault.jpg?sqp=-oaymwEbCMQBEG5IVfKriqkDDggBFQAAiEIYAXABwAEG&rs=AOn4CLABh5Ylb5wbuulOAWLcSYtfYQKiAQ",
-                            "width": 196,
-                            "height": 110
-                        },
-                        {
-                            "url": "https://i.ytimg.com/vi/c9FF4Tfj2w8/hqdefault.jpg?sqp=-oaymwEcCPYBEIoBSFXyq4qpAw4IARUAAIhCGAFwAcABBg==&rs=AOn4CLAykmTivOgjlW6a4tKWnLJpL9yqKw",
-                            "width": 246,
-                            "height": 138
-                        },
-                        {
-                            "url": "https://i.ytimg.com/vi/c9FF4Tfj2w8/hqdefault.jpg?sqp=-oaymwEcCNACELwBSFXyq4qpAw4IARUAAIhCGAFwAcABBg==&rs=AOn4CLC8qRkotPyH9kGgHe29QuyOh-F9KA",
-                            "width": 336,
-                            "height": 188
-                        }
-                    ],
-                    "richThumbnail": {
-                        "url": "https://i.ytimg.com/an_webp/c9FF4Tfj2w8/mqdefault_6s.webp?du=3000&sqp=CPGE-YgG&rs=AOn4CLAJAC5zmDOtySflLFMQpAoaPUqHjA",
-                        "width": 320,
-                        "height": 180
-                    },
-                    "descriptionSnippet": null,
-                    "channel": {
-                        "name": "Good Vibes Music",
-                        "id": "UChCPI0uvKwrkYhTEx8UVrnQ",
-                        "thumbnails": [
-                            {
-                                "url": "https://yt3.ggpht.com/ytc/AKedOLSFYY0mvwL0DbRzddMAQdbgFshM42R5byhI9FiEBQ=s68-c-k-c0x00ffffff-no-rj",
-                                "width": 68,
-                                "height": 68
-                            }
-                        ],
-                        "link": "https://www.youtube.com/channel/UChCPI0uvKwrkYhTEx8UVrnQ"
-                    },
-                    "accessibility": {
-                        "title": "Ascence - About You [NCS 1 HOUR] by Good Vibes Music 1 year ago 1 hour 226,354 views",
-                        "duration": "1 hour"
-                    },
-                    "link": "https://www.youtube.com/watch?v=c9FF4Tfj2w8",
-                    "shelfTitle": null
-                }
-            ]
-        }
-    """
-
+class Hashtag:
     def __init__(
         self,
         hashtag: str,
@@ -727,21 +655,36 @@ class Hashtag(HashtagCore):
         region: str = "US",
         timeout: int = None,
     ):
-        super().__init__(hashtag, limit, language, region, timeout)
+        self.hashtag = hashtag
+        self.limit = limit
+        self.language = language
+        self.region = region
+        self.timeout = timeout
+        self.hashtag_core = None
+
+    async def __aenter__(self):
+        self.hashtag_core = await HashtagCore(
+            self.hashtag, self.limit, self.language, self.region, self.timeout
+        ).__aenter__()
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        if self.hashtag_core:
+            await self.hashtag_core.__aexit__(exc_type, exc_val, exc_tb)
 
     async def next(self) -> dict:
         """Gets the videos from the next page.
         Returns:
             dict: Returns dictionary containing the search result.
         """
-        self.response = None
-        self.resultComponents = []
-        if self.params is None:
-            await self._asyncGetParams()
-        await self._asyncMakeRequest()
-        self._getComponents()
+        self.hashtag_core.response = None
+        self.hashtag_core.resultComponents = []
+        if self.hashtag_core.params is None:
+            await self.hashtag_core._asyncGetParams()
+        await self.hashtag_core._asyncMakeRequest()
+        self.hashtag_core._getComponents()
         return {
-            "result": self.resultComponents,
+            "result": self.hashtag_core.resultComponents,
         }
 
 
@@ -754,20 +697,30 @@ class Transcript:
             return transcript_core.result
 
 
-class Channel(ChannelCore):
+class Channel:
     def __init__(
         self, channel_id: str, request_type: str = ChannelRequestType.playlists
     ):
-        super().__init__(channel_id, request_type)
+        self.channel_id = channel_id
+        self.request_type = request_type
+        self.channel_core = None
+        self.result = None
 
-    async def init(self):
-        await self.async_create()
+    async def __aenter__(self):
+        self.channel_core = await ChannelCore(
+            self.channel_id, self.request_type
+        ).__aenter__()
+        await self.channel_core.async_create()
+        self.result = self.channel_core.result
+        return self
 
-    async def next(self):
-        await self.async_next()
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        if self.channel_core:
+            await self.channel_core.__aexit__(exc_type, exc_val, exc_tb)
 
-    @staticmethod
-    async def get(channel_id: str, request_type: str = ChannelRequestType.playlists):
-        async with ChannelCore(channel_id, request_type) as channel_core:
-            await channel_core.async_create()
-            return channel_core.result
+    async def next(self) -> bool:
+        if not self.channel_core.has_more_playlists():
+            return False
+        await self.channel_core.async_next()
+        self.result = self.channel_core.result
+        return True

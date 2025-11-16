@@ -1,22 +1,25 @@
 import os
 import aiohttp
+from aiohttp import ClientTimeout
 from py_yt.core.constants import userAgent
-from dotenv import load_dotenv
 
-load_dotenv()
 
 class RequestCore:
-    def __init__(self, timeout: float = 3.0):
-        self.url: str | None = None
-        self.data: dict | None = None
-        self.timeout = aiohttp.ClientTimeout(total=timeout)
-        self.proxy_url: str | None = os.environ.get("PROXY_URL")
-        self.async_session = aiohttp.ClientSession(timeout=self.timeout)
+    def __init__(self, timeout: int = 5):
+        self.url = None
+        self.data = None
+        self.timeout = timeout
+        self.proxy_url = os.environ.get("PROXY_URL")
+        self.async_session = None
 
     async def asyncPostRequest(self) -> aiohttp.ClientResponse | None:
         """Sends an asynchronous POST request."""
         if not self.url:
             raise ValueError("URL must be set before making a request.")
+        if self.async_session is None:
+            raise RuntimeError(
+                "async_session is not initialized. Use 'async with' context manager."
+            )
         try:
             response = await self.async_session.post(
                 self.url,
@@ -37,6 +40,10 @@ class RequestCore:
         """Sends an asynchronous GET request."""
         if not self.url:
             raise ValueError("URL must be set before making a request.")
+        if self.async_session is None:
+            raise RuntimeError(
+                "async_session is not initialized. Use 'async with' context manager."
+            )
         cookies = {"CONSENT": "YES+1"}
         try:
             response = await self.async_session.get(
@@ -54,12 +61,12 @@ class RequestCore:
             print(f"Request error: {e}")
             return None
 
-    async def close(self):
-        """Closes the aiohttp client session."""
-        await self.async_session.close()
-
     async def __aenter__(self):
+        self.async_session = aiohttp.ClientSession(
+            timeout=ClientTimeout(total=self.timeout)
+        )
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
-        await self.close()
+        if self.async_session:
+            await self.async_session.close()
