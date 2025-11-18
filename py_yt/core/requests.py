@@ -3,10 +3,6 @@ import os
 import httpx
 from py_yt.core.constants import userAgent
 
-from dotenv import load_dotenv
-
-load_dotenv()
-
 
 class RequestCore:
     def __init__(self, timeout: float = 3.0):
