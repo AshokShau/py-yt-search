@@ -5,7 +5,7 @@ from py_yt.core.constants import userAgent
 
 
 class RequestCore:
-    def __init__(self, timeout: float = 3.0):
+    def __init__(self, timeout: float = 7.0):
         self.url: str | None = None
         self.data: dict | None = None
         self.timeout: float = timeout
