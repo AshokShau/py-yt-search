@@ -79,9 +79,12 @@ class Search(SearchCore):
         language: str = "en",
         region: str = "US",
         timeout: Optional[int] = None,
+        with_live: bool = True,
     ):
         self.searchMode = (True, True, True)
-        super().__init__(query, limit, language, region, None, timeout)  # type: ignore
+        super().__init__(
+            query, limit, language, region, None, timeout, with_live=with_live
+        )  # type: ignore
 
     async def next(self) -> Dict[str, Any]:
         return await self._nextAsync()  # type: ignore
@@ -161,9 +164,18 @@ class VideosSearch(SearchCore):
         language: str = "en",
         region: str = "US",
         timeout: Optional[int] = None,
+        with_live: bool = True,
     ):
         self.searchMode = (True, False, False)
-        super().__init__(query, limit, language, region, SearchMode.videos, timeout)
+        super().__init__(
+            query,
+            limit,
+            language,
+            region,
+            SearchMode.videos,
+            timeout,
+            with_live=with_live,
+        )
 
     async def next(self) -> Dict[str, Any]:
         return await self._nextAsync()  # type: ignore
@@ -382,9 +394,18 @@ class CustomSearch(SearchCore):
         language: str = "en",
         region: str = "US",
         timeout: Optional[int] = None,
+        with_live: bool = True,
     ):
         self.searchMode = (True, True, True)
-        super().__init__(query, limit, language, region, search_preferences, timeout)
+        super().__init__(
+            query,
+            limit,
+            language,
+            region,
+            search_preferences,
+            timeout,
+            with_live=with_live,
+        )
 
     async def next(self) -> Dict[str, Any]:
         return await self._nextAsync()
