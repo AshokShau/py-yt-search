@@ -31,6 +31,7 @@ class SearchCore(RequestCore, RequestHandler, ComponentHandler):
         region: str,
         searchPreferences: str,
         timeout: int,
+        with_live: bool = True,
     ):
         super().__init__()
         self.query = query
@@ -39,6 +40,7 @@ class SearchCore(RequestCore, RequestHandler, ComponentHandler):
         self.region = region
         self.searchPreferences = searchPreferences
         self.timeout = timeout
+        self.with_live = with_live
         self.continuationKey = None
 
     def sync_create(self):
@@ -135,24 +137,42 @@ class SearchCore(RequestCore, RequestHandler, ComponentHandler):
         self.resultComponents = []
         for element in self.responseSource:
             if videoElementKey in element.keys() and findVideos:
-                self.resultComponents.append(self._getVideoComponent(element))
+                videoComponent = self._getVideoComponent(element)
+                if (
+                    not self.with_live
+                    and videoComponent["duration"] is None
+                    and videoComponent["publishedTime"] is None
+                ):
+                    continue
+                self.resultComponents.append(videoComponent)
             if channelElementKey in element.keys() and findChannels:
                 self.resultComponents.append(self._getChannelComponent(element))
             if playlistElementKey in element.keys() and findPlaylists:
                 self.resultComponents.append(self._getPlaylistComponent(element))
             if shelfElementKey in element.keys() and findVideos:
                 for shelfElement in self._getShelfComponent(element)["elements"]:
-                    self.resultComponents.append(
-                        self._getVideoComponent(
-                            shelfElement,
-                            shelfTitle=self._getShelfComponent(element)["title"],
-                        )
+                    videoComponent = self._getVideoComponent(
+                        shelfElement,
+                        shelfTitle=self._getShelfComponent(element)["title"],
                     )
+                    if (
+                        not self.with_live
+                        and videoComponent["duration"] is None
+                        and videoComponent["publishedTime"] is None
+                    ):
+                        continue
+                    self.resultComponents.append(videoComponent)
             if richItemKey in element.keys() and findVideos:
                 richItemElement = self._getValue(element, [richItemKey, "content"])
                 """ Initial fallback handling for VideosSearch """
                 if videoElementKey in richItemElement.keys():
                     videoComponent = self._getVideoComponent(richItemElement)
+                    if (
+                        not self.with_live
+                        and videoComponent["duration"] is None
+                        and videoComponent["publishedTime"] is None
+                    ):
+                        continue
                     self.resultComponents.append(videoComponent)
             if len(self.resultComponents) >= self.limit:
                 break
