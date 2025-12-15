@@ -135,8 +135,11 @@ class SearchCore(RequestCore, RequestHandler, ComponentHandler):
         self, findVideos: bool, findChannels: bool, findPlaylists: bool
     ) -> None:
         self.resultComponents = []
+        if not self.responseSource:
+            return
+
         for element in self.responseSource:
-            if videoElementKey in element.keys() and findVideos:
+            if videoElementKey in element and findVideos:
                 videoComponent = self._getVideoComponent(element)
                 if (
                     not self.with_live
@@ -145,11 +148,11 @@ class SearchCore(RequestCore, RequestHandler, ComponentHandler):
                 ):
                     continue
                 self.resultComponents.append(videoComponent)
-            if channelElementKey in element.keys() and findChannels:
+            if channelElementKey in element and findChannels:
                 self.resultComponents.append(self._getChannelComponent(element))
-            if playlistElementKey in element.keys() and findPlaylists:
+            if (playlistElementKey in element or "lockupViewModel" in element) and findPlaylists:
                 self.resultComponents.append(self._getPlaylistComponent(element))
-            if shelfElementKey in element.keys() and findVideos:
+            if shelfElementKey in element and findVideos:
                 for shelfElement in self._getShelfComponent(element)["elements"]:
                     videoComponent = self._getVideoComponent(
                         shelfElement,
@@ -162,10 +165,10 @@ class SearchCore(RequestCore, RequestHandler, ComponentHandler):
                     ):
                         continue
                     self.resultComponents.append(videoComponent)
-            if richItemKey in element.keys() and findVideos:
+            if richItemKey in element and findVideos:
                 richItemElement = self._getValue(element, [richItemKey, "content"])
                 """ Initial fallback handling for VideosSearch """
-                if videoElementKey in richItemElement.keys():
+                if videoElementKey in richItemElement:
                     videoComponent = self._getVideoComponent(richItemElement)
                     if (
                         not self.with_live
