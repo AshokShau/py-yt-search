@@ -204,7 +204,10 @@ class ComponentHandler:
                 },
             }
         else:
-            raise Exception("ERROR: unrecognized element format encountered in _getPlaylistComponent.")
+            raise ValueError(
+                "Unrecognized element format encountered in _getPlaylistComponent; "
+                f"element keys: {list(element.keys())}"
+            )
 
         component["link"] = "https://www.youtube.com/playlist?list=" + component["id"]
         if component["channel"]["id"]:
