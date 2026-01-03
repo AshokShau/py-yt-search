@@ -21,8 +21,9 @@ class ChannelSearchCore(RequestCore, ComponentHandler):
         search_preferences: str,
         browse_id: str,
         timeout: int,
+        max_retries: int = 0,
     ):
-        super().__init__()
+        super().__init__(timeout=timeout, max_retries=max_retries)
         self.query = query
         self.language = language
         self.region = region

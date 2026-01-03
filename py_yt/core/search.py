@@ -32,8 +32,9 @@ class SearchCore(RequestCore, RequestHandler, ComponentHandler):
         searchPreferences: str,
         timeout: int,
         with_live: bool = True,
+        max_retries: int = 0,
     ):
-        super().__init__()
+        super().__init__(timeout=timeout, max_retries=max_retries)
         self.query = query
         self.limit = limit
         self.language = language
