@@ -1,7 +1,10 @@
 import os
+import logging
 
 import httpx
 from py_yt.core.constants import userAgent
+
+logger = logging.getLogger(__name__)
 
 
 class RequestCore:
@@ -29,9 +32,22 @@ class RequestCore:
                 response.raise_for_status()
                 return response
             except httpx.HTTPStatusError as e:
-                print(f"HTTP error: {e.response.status_code} - {e.response.text}")
+                logger.error(
+                    "HTTP error during HTTP request",
+                    extra={
+                        "status_code": getattr(e.response, "status_code", None),
+                        "response_text": getattr(e.response, "text", None),
+                    },
+                    exc_info=True,
+                )
             except httpx.RequestError as e:
-                print(f"Request error: {e}")
+                logger.error(
+                    "Request error during HTTP request",
+                    extra={
+                        "request_url": getattr(getattr(e, "request", None), "url", None),
+                    },
+                    exc_info=True,
+                )
         return None
 
     async def asyncGetRequest(self) -> httpx.Response | None:
@@ -49,7 +65,20 @@ class RequestCore:
                 response.raise_for_status()
                 return response
             except httpx.HTTPStatusError as e:
-                print(f"HTTP error: {e.response.status_code} - {e.response.text}")
+                logger.error(
+                    "HTTP error during HTTP request",
+                    extra={
+                        "status_code": getattr(e.response, "status_code", None),
+                        "response_text": getattr(e.response, "text", None),
+                    },
+                    exc_info=True,
+                )
             except httpx.RequestError as e:
-                print(f"Request error: {e}")
+                logger.error(
+                    "Request error during HTTP request",
+                    extra={
+                        "request_url": getattr(getattr(e, "request", None), "url", None),
+                    },
+                    exc_info=True,
+                )
         return None

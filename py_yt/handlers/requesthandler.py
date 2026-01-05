@@ -78,5 +78,7 @@ class RequestHandler(ComponentHandler):
                     self.continuationKey = self._getValue(
                         self.responseSource[-1], continuationKeyPath
                     )
+                else:
+                    self.continuationKey = None
         except:
             raise Exception("ERROR: Could not parse YouTube response.")
