@@ -74,8 +74,11 @@ class RequestHandler(ComponentHandler):
                 self.responseSource = self._getValue(
                     json.loads(self.response), fallbackContentPath
                 )
-                self.continuationKey = self._getValue(
-                    self.responseSource[-1], continuationKeyPath
-                )
+                if self.responseSource:
+                    self.continuationKey = self._getValue(
+                        self.responseSource[-1], continuationKeyPath
+                    )
+                else:
+                    self.continuationKey = None
         except:
             raise Exception("ERROR: Could not parse YouTube response.")

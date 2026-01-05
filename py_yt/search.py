@@ -80,10 +80,11 @@ class Search(SearchCore):
         region: str = "US",
         timeout: Optional[int] = None,
         with_live: bool = True,
+        max_retries: int = 0,
     ):
         self.searchMode = (True, True, True)
         super().__init__(
-            query, limit, language, region, None, timeout, with_live=with_live
+            query, limit, language, region, None, timeout, with_live=with_live, max_retries=max_retries
         )  # type: ignore
 
     async def next(self) -> Dict[str, Any]:
@@ -165,6 +166,7 @@ class VideosSearch(SearchCore):
         region: str = "US",
         timeout: Optional[int] = None,
         with_live: bool = True,
+        max_retries: int = 0,
     ):
         self.searchMode = (True, False, False)
         super().__init__(
@@ -175,6 +177,7 @@ class VideosSearch(SearchCore):
             SearchMode.videos,
             timeout,
             with_live=with_live,
+            max_retries=max_retries,
         )
 
     async def next(self) -> Dict[str, Any]:
@@ -230,9 +233,10 @@ class ChannelsSearch(SearchCore):
         language: str = "en",
         region: str = "US",
         timeout: Optional[int] = None,
+        max_retries: int = 0,
     ):
         self.searchMode = (False, True, False)
-        super().__init__(query, limit, language, region, SearchMode.channels, timeout)  # type: ignore
+        super().__init__(query, limit, language, region, SearchMode.channels, timeout, max_retries=max_retries)  # type: ignore
 
     async def next(self) -> Dict[str, Any]:
         return await self._nextAsync()  # type: ignore
@@ -300,9 +304,10 @@ class PlaylistsSearch(SearchCore):
         language: str = "en",
         region: str = "US",
         timeout: Optional[int] = None,
+        max_retries: int = 0,
     ):
         self.searchMode = (False, False, True)
-        super().__init__(query, limit, language, region, SearchMode.playlists, timeout)  # type: ignore
+        super().__init__(query, limit, language, region, SearchMode.playlists, timeout, max_retries=max_retries)  # type: ignore
 
     async def next(self) -> Dict[str, Any]:
         return await self._nextAsync()  # type: ignore
@@ -395,6 +400,7 @@ class CustomSearch(SearchCore):
         region: str = "US",
         timeout: Optional[int] = None,
         with_live: bool = True,
+        max_retries: int = 0,
     ):
         self.searchMode = (True, True, True)
         super().__init__(
@@ -405,6 +411,7 @@ class CustomSearch(SearchCore):
             search_preferences,
             timeout,
             with_live=with_live,
+            max_retries=max_retries,
         )
 
     async def next(self) -> Dict[str, Any]:
@@ -492,5 +499,6 @@ class ChannelSearch(ChannelSearchCore):
         region: str = "US",
         search_preferences: str = "EgZzZWFyY2g%3D",
         timeout: Optional[int] = None,
+        max_retries: int = 0,
     ):
-        super().__init__(query, language, region, search_preferences, browse_id, timeout)  # type: ignore
+        super().__init__(query, language, region, search_preferences, browse_id, timeout, max_retries=max_retries)  # type: ignore
