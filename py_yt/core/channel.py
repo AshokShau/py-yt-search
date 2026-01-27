@@ -36,6 +36,16 @@ class ChannelCore(RequestCore):
             "lastEdited": getValue(i, ["publishedTimeText", "simpleText"]),
         }
 
+    def video_parse(self, i) -> dict:
+        return {
+            "id": getValue(i, ["videoId"]),
+            "thumbnails": getValue(i, ["thumbnail", "thumbnails"]),
+            "title": getValue(i, ["title", "runs", 0, "text"]),
+            "viewCount": getValue(i, ["viewCountText", "simpleText"]),
+            "publishedTime": getValue(i, ["publishedTimeText", "simpleText"]),
+            "duration": getValue(i, ["lengthText", "simpleText"]),
+        }
+
     def parse_response(self):
         response = self.data.json()
 
@@ -75,6 +85,7 @@ class ChannelCore(RequestCore):
 
         tabData: dict = {}
         playlists: list = []
+        videos: list = []
 
         for tab in getValue(
             response, ["contents", "twoColumnBrowseResultsRenderer", "tabs"]
@@ -114,6 +125,32 @@ class ChannelCore(RequestCore):
                             break
                         i: dict = i["gridPlaylistRenderer"]
                         playlists.append(self.playlist_parse(i))
+            elif title == "Videos":
+                videos_data = getValue(
+                    tab,
+                    [
+                        "tabRenderer",
+                        "content",
+                        "richGridRenderer",
+                        "contents",
+                    ],
+                )
+                if videos_data:
+                    for i in videos_data:
+                        if getValue(i, ["continuationItemRenderer"]):
+                            self.continuation = getValue(
+                                i,
+                                [
+                                    "continuationItemRenderer",
+                                    "continuationEndpoint",
+                                    "continuationCommand",
+                                    "token",
+                                ],
+                            )
+                            break
+                        video = getValue(i, ["richItemRenderer", "content", "videoRenderer"])
+                        if video:
+                            videos.append(self.video_parse(video))
             elif title == "About":
                 tabData = tab["tabRenderer"]
 
@@ -197,6 +234,7 @@ class ChannelCore(RequestCore):
                 getValue(metadata, ["country", "simpleText"]) if metadata else None
             ),
             "playlists": playlists,
+            "videos": videos,
         }
 
     def parse_next_response(self):
@@ -229,6 +267,12 @@ class ChannelCore(RequestCore):
                 self.result["playlists"].append(
                     self.playlist_parse(getValue(i, ["gridPlaylistRenderer"]))
                 )
+            elif getValue(i, ["richItemRenderer", "content", "videoRenderer"]):
+                self.result["videos"].append(
+                    self.video_parse(
+                        getValue(i, ["richItemRenderer", "content", "videoRenderer"])
+                    )
+                )
             # TODO: Handle other types like gridShowRenderer
 
     async def async_next(self):
@@ -239,6 +283,9 @@ class ChannelCore(RequestCore):
         self.parse_next_response()
 
     def has_more_playlists(self):
+        return self.continuation is not None
+
+    def has_more_videos(self):
         return self.continuation is not None
 
     async def async_create(self):

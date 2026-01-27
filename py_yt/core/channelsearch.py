@@ -36,7 +36,7 @@ class ChannelSearchCore(RequestCore, ComponentHandler):
         await self._asyncRequest()
         self._parseChannelSearchSource()
         self.response = self._getChannelSearchComponent(self.response)
-        return self.response
+        return self.result(ResultMode.dict)
 
     def _parseChannelSearchSource(self) -> None:
         try:

@@ -1,28 +1,22 @@
 import asyncio
-from py_yt import Transcript
+from py_yt.extras import Transcript
 
 async def main():
-    print("--- Transcript ---")
+    print("Testing Transcript...")
+    # Video ID: E07s5ZYygMg (Harry Styles - Watermelon Sugar)
+    video_link = "https://www.youtube.com/watch?v=E07s5ZYygMg"
     try:
-        print(await Transcript.get("https://www.youtube.com/watch?v=L7kF4MXXCoA"))
-    except Exception as e:
-        print(f"Failed to get transcript for L7kF4MXXCoA: {e}")
-
-    url = "https://www.youtube.com/watch?v=-1xu0IP35FI"
-    print(f"\nGetting transcript for {url}")
-    try:
-        transcript_en = await Transcript.get(url)
-        
-        if transcript_en and "languages" in transcript_en and len(transcript_en["languages"]) > 0:
-            # you actually don't have to pass a valid URL in following Transcript call. You can input an empty string, but I do recommend still inputing a valid URL.
-            transcript_2 = await Transcript.get(
-                url, transcript_en["languages"][-1]["params"]
-            ) 
-            print(transcript_2)
+        result = await Transcript.get(video_link)
+        print(f"Transcript Result keys: {result.keys()}")
+        if "segments" in result:
+             print("Transcript Result: Success (Structure correct)")
+             print(f"Segments count: {len(result['segments'])}")
         else:
-            print("No languages found or transcript failed.")
+             print("Transcript Result: Empty or Failed")
+             print(result)
+
     except Exception as e:
-        print(f"Failed to get transcript for {url}: {e}")
+        print(f"Transcript Failed with error: {e}")
 
 if __name__ == "__main__":
     asyncio.run(main())

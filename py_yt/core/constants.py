@@ -2,7 +2,7 @@ requestPayload = {
     "context": {
         "client": {
             "clientName": "WEB",
-            "clientVersion": "2.20210224.06.00",
+            "clientVersion": "2.20240406.01.00",
             "newVisitorCookie": True,
         },
         "user": {
@@ -124,3 +124,6 @@ class VideoSortOrder:
 class ChannelRequestType:
     info = "EgVhYm91dA%3D%3D"
     playlists = "EglwbGF5bGlzdHMYAyABcAA%3D"
+    videos = "EgZ2aWRlb3PyBgQKAjoA"
+    shorts = "EgZzaG9ydHM%3D"
+    streams = "EgZzdHJlYW0%3D"

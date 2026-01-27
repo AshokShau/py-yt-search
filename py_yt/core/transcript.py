@@ -11,6 +11,7 @@ class TranscriptCore(RequestCore):
         super().__init__()
         self.videoLink = videoLink
         self.key = key
+        self.result = {}
 
     def prepare_params_request(self):
         self.url = (
@@ -31,9 +32,10 @@ class TranscriptCore(RequestCore):
         key = ""
         for panel in panels:
             panel = panel["engagementPanelSectionListRenderer"]
+            target_id = getValue(panel, ["targetId"])
             if (
-                getValue(panel, ["targetId"])
-                == "engagement-panel-searchable-transcript"
+                target_id == "engagement-panel-searchable-transcript"
+                or target_id == "engagement-panel-transcript"
             ):
                 key = getValue(
                     panel,
@@ -57,20 +59,8 @@ class TranscriptCore(RequestCore):
             + "?"
             + urlencode({"key": searchKey, "prettyPrint": "false"})
         )
-        # clientVersion must be newer than in requestPayload
-        self.data = {
-            "context": {
-                "client": {
-                    "clientName": "WEB",
-                    "clientVersion": "2.20220318.00.00",
-                    "newVisitorCookie": True,
-                },
-                "user": {
-                    "lockedSafetyMode": False,
-                },
-            },
-            "params": self.key,
-        }
+        self.data = copy.deepcopy(requestPayload)
+        self.data["params"] = self.key
 
     def extract_transcript(self):
         response = self.data
