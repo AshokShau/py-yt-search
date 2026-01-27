@@ -1,102 +1,102 @@
-# YouTube Data Extraction with py-yt-search
+# py-yt-search
 
+🔎 Search for YouTube videos, channels & playlists. Get 🎞 video & 📑 playlist info using link. Get search suggestions. WITHOUT YouTube Data API v3.
+
+---
 
 ## Features
-- Search YouTube for videos, channels, and playlists
-- Retrieve video information and available formats
-- Extract comments from videos
-- Get video transcripts in different languages
-- Fetch search suggestions from YouTube
-- Retrieve details of YouTube channels and their playlists
+
+* 🔎 Search videos, channels, and playlists
+* 📄 Get video metadata + available streams
+* 📜 Fetch transcripts (subtitles)
+* 📂 Playlist info + all videos
+* 👤 Channel info + playlists
+* 💡 Search suggestions (autocomplete)
+* 🏷 Hashtag search
+* 🔁 Pagination support
+* 🎛 Custom search filters (date, duration, type, etc.)
+
+---
 
 ## Installation
-Make sure you have Python installed (>=3.8). Install `py-yt-search` using:
+
+Python **>= 3.8** required.
 
 ```bash
 pip install git+https://github.com/AshokShau/py-yt-search@master
 ```
 
+Or PyPI:
+
 ```bash
 pip install py-yt-search
 ```
 
-## Usage
-The script uses `asyncio` to execute YouTube queries asynchronously. Below is an overview of the main functions:
+---
 
-### Search YouTube
+## Quick Usage
+
 ```python
-_search = Search('NoCopyrightSounds', limit=1, language='en', region='US')
-result = await _search.next()
-print(result)
+import asyncio
+
+from py_yt import Search, Video
+
+
+async def main():
+    # Search
+    result = await Search("lofi music").next()
+    print(result["result"][0]["title"])
+
+    # Video details
+    video = await Video().get("https://youtu.be/dQw4w9WgXcQ")
+    print(video["title"], video["duration"])
+
+asyncio.run(main())
 ```
 
-### Search for Videos Only
-```python
-videosSearch = VideosSearch('NoCopyrightSounds', limit=10, language='en', region='US')
-videosResult = await videosSearch.next()
-print(videosResult)
-```
+---
 
-### Search for Channels Only
-```python
-channelsSearch = ChannelsSearch('NoCopyrightSounds', limit=1, language='en', region='US')
-channelsResult = await channelsSearch.next()
-print(channelsResult)
-```
+## Examples
 
-### Search for Playlists Only
-```python
-playlistsSearch = PlaylistsSearch('NoCopyrightSounds', limit=1, language='en', region='US')
-playlistsResult = await playlistsSearch.next()
-print(playlistsResult)
-```
+All working examples are in the `examples/` folder:
 
-### Get Video Details
-```python
-video = await Video.get('z0GKGpObgPY')
-print(video)
-```
+| Feature        | File                            |
+|----------------|---------------------------------|
+| Search         | `examples/search.py`            |
+| Pagination     | `examples/search_pagination.py` |
+| Video details  | `examples/video.py`             |
+| Playlist       | `examples/playlist.py`          |
+| Channel info   | `examples/channel.py`           |
+| Suggestions    | `examples/suggestions.py`       |
+| Custom filters | `examples/custom_search.py`     |
+| Hashtag search | `examples/hashtag.py`           |
+| Transcripts    | `examples/transcript.py`        |
+| Channel search | `examples/channel_search.py`    |
 
-### Get Playlist Details
-```python
-playlist = await Playlist.get('https://www.youtube.com/playlist?list=PLRBp0Fe2GpgmsW46rJyudVFlY6IYjFBIK')
-print(playlist)
-```
+Run any example:
 
-### Fetch Comments from a Video
-```python
-comments = Comments('_ZdsmLgCVdU')
-await comments.getNextComments()
-print(len(comments.comments['result']))
-```
-
-### Retrieve Video Transcript
-```python
-transcript = await Transcript.get('https://www.youtube.com/watch?v=L7kF4MXXCoA')
-print(transcript)
-```
-
-### Get YouTube Search Suggestions
-```python
-suggestions = await Suggestions.get('NoCopyrightSounds', language='en', region='US')
-print(suggestions)
-```
-
-## Running the Script
-To run the script, execute:
 ```bash
-python script.py
+python3 examples/search.py
 ```
 
-Ensure `asyncio.run(main())` is at the end of the script to handle async execution.
+---
 
 ## Notes
-- The script uses `asyncio` for efficient asynchronous operations.
-- Some operations may require multiple calls to retrieve all available data (e.g., pagination for comments and playlists).
-- `py-yt-search` provides various search filters to refine results, such as sorting by upload date or filtering by duration.
+
+* Uses **asyncio** (non-blocking & fast)
+* No official YouTube API key needed
+* Best used for bots, scrapers, and personal tools
+
+---
 
 ## License
-This project is licensed under the MIT License. See the [LICENSE](/LICENSE) file for details.
+
+MIT License — see [LICENSE](LICENSE)
+
+---
 
 ## Credits
-This project is based on [youtube-search-python](https://github.com/alexmercerind/youtube-search-python) by Alex Mercer.
+
+Based on
+👉 [https://github.com/alexmercerind/youtube-search-python](https://github.com/alexmercerind/youtube-search-python)
+by Alex Mercer
