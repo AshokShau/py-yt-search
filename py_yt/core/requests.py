@@ -22,11 +22,14 @@ class RequestCore:
         """Sends an asynchronous POST request."""
         if not self.url:
             raise ValueError("URL must be set before making a request.")
+
+        headers = {"User-Agent": userAgent}
+
         for _ in range(self.max_retries + 1):
             try:
                 response = await self.async_client.post(
                     self.url,
-                    headers={"User-Agent": userAgent},
+                    headers=headers,
                     json=self.data,
                 )
                 response.raise_for_status()
