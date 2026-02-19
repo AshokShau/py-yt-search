@@ -38,8 +38,14 @@ class SuggestionsCore(RequestCore):
         }
     """
 
-    def __init__(self, language: str = "en", region: str = "US", timeout: int = None):
-        super().__init__()
+    def __init__(
+        self,
+        language: str = "en",
+        region: str = "US",
+        timeout: int = None,
+        proxy: str | None = None,
+    ):
+        super().__init__(timeout=timeout, proxy=proxy)
         self.language = language
         self.region = region
         self.timeout = timeout

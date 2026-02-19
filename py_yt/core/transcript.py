@@ -7,8 +7,8 @@ from py_yt.core.requests import RequestCore
 
 
 class TranscriptCore(RequestCore):
-    def __init__(self, videoLink: str, key: str):
-        super().__init__()
+    def __init__(self, videoLink: str, key: str, proxy: str | None = None):
+        super().__init__(proxy=proxy)
         self.videoLink = videoLink
         self.key = key
         self.result = {"segments": [], "languages": []}

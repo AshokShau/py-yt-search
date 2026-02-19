@@ -64,8 +64,9 @@ class VideoCore(RequestCore):
         timeout: int,
         enable_html: bool,
         overrided_client: str = "ANDROID",
+        proxy: str | None = None,
     ):
-        super().__init__()
+        super().__init__(timeout=timeout, proxy=proxy)
         self.timeout = timeout
         self.resultMode = result_mode
         self.componentMode = component_mode

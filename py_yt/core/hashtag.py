@@ -28,13 +28,20 @@ class HashtagCore(ComponentHandler):
     resultComponents = []
 
     def __init__(
-        self, hashtag: str, limit: int, language: str, region: str, timeout: int
+        self,
+        hashtag: str,
+        limit: int,
+        language: str,
+        region: str,
+        timeout: int,
+        proxy: str | None = None,
     ):
         self.hashtag = hashtag
         self.limit = limit
         self.language = language
         self.region = region
         self.timeout = timeout
+        self.proxy = proxy
         self.continuationKey = None
         self.params = None
 
@@ -108,7 +115,7 @@ class HashtagCore(ComponentHandler):
             "gl": self.region,
         }
         try:
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(proxy=self.proxy) as client:
                 response = await client.post(
                     "https://www.youtube.com/youtubei/v1/search",
                     params={
@@ -180,7 +187,7 @@ class HashtagCore(ComponentHandler):
         if self.continuationKey:
             requestBody["continuation"] = self.continuationKey
         try:
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(proxy=self.proxy) as client:
                 response = await client.post(
                     "https://www.youtube.com/youtubei/v1/browse",
                     params={

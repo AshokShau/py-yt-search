@@ -8,12 +8,14 @@ logger = logging.getLogger(__name__)
 
 
 class RequestCore:
-    def __init__(self, timeout: float = 7.0, max_retries: int = 0):
+    def __init__(
+        self, timeout: float = 7.0, max_retries: int = 0, proxy: str | None = None
+    ):
         self.url: str | None = None
         self.data: dict | None = None
         self.timeout: float = timeout
         self.max_retries: int = max_retries
-        self.proxy_url: str | None = os.environ.get("PROXY_URL")
+        self.proxy_url: str | None = proxy or os.environ.get("PROXY_URL")
         client_args = {"timeout": self.timeout, "proxy": self.proxy_url}
 
         self.async_client = httpx.AsyncClient(**client_args)
