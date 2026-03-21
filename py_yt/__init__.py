@@ -1,4 +1,12 @@
-from .extras import Video, Playlist, Suggestions, Hashtag, Transcript, Channel
+from .extras import (
+    Video,
+    Playlist,
+    Suggestions,
+    Hashtag,
+    Transcript,
+    Channel,
+    Recommendations,
+)
 from .search import (
     Search,
     VideosSearch,
@@ -17,6 +25,7 @@ __all__ = [
     "Hashtag",
     "Transcript",
     "Channel",
+    "Recommendations",
     "Search",
     "VideosSearch",
     "ChannelsSearch",
