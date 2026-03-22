@@ -7,8 +7,10 @@ from py_yt.core.requests import RequestCore
 
 
 class ChannelCore(RequestCore):
-    def __init__(self, channel_id: str, request_params: str):
-        super().__init__()
+    def __init__(
+        self, channel_id: str, request_params: str, proxy: str | None = None
+    ):
+        super().__init__(proxy=proxy)
         self.browseId = channel_id
         self.params = request_params
         self.result = {}

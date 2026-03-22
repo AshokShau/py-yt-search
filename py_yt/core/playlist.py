@@ -26,9 +26,14 @@ class PlaylistCore(RequestCore):
     continuationKey = None
 
     def __init__(
-        self, playlist_link: str, componentMode: str, result_mode: int, timeout: int
+        self,
+        playlist_link: str,
+        componentMode: str,
+        result_mode: int,
+        timeout: int,
+        proxy: str | None = None,
     ):
-        super().__init__()
+        super().__init__(timeout=timeout, proxy=proxy)
         self.componentMode = componentMode
         self.resultMode = result_mode
         self.timeout = timeout

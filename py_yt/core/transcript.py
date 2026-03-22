@@ -7,10 +7,11 @@ from py_yt.core.requests import RequestCore
 
 
 class TranscriptCore(RequestCore):
-    def __init__(self, videoLink: str, key: str):
-        super().__init__()
+    def __init__(self, videoLink: str, key: str, proxy: str | None = None):
+        super().__init__(proxy=proxy)
         self.videoLink = videoLink
         self.key = key
+        self.result = {"segments": [], "languages": []}
 
     def prepare_params_request(self):
         self.url = (
@@ -57,20 +58,8 @@ class TranscriptCore(RequestCore):
             + "?"
             + urlencode({"key": searchKey, "prettyPrint": "false"})
         )
-        # clientVersion must be newer than in requestPayload
-        self.data = {
-            "context": {
-                "client": {
-                    "clientName": "WEB",
-                    "clientVersion": "2.20220318.00.00",
-                    "newVisitorCookie": True,
-                },
-                "user": {
-                    "lockedSafetyMode": False,
-                },
-            },
-            "params": self.key,
-        }
+        self.data = copy.deepcopy(requestPayload)
+        self.data["params"] = self.key
 
     def extract_transcript(self):
         response = self.data

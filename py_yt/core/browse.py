@@ -21,8 +21,9 @@ class BrowseCore(RequestCore, ComponentHandler):
         region: str = "US",
         timeout: int = 20,
         max_retries: int = 0,
+        proxy: str | None = None,
     ):
-        super().__init__(timeout=timeout, max_retries=max_retries)
+        super().__init__(timeout=timeout, max_retries=max_retries, proxy=proxy)
         self.browseId = browse_id
         self.limit = limit
         self.language = language

@@ -33,8 +33,9 @@ class SearchCore(RequestCore, RequestHandler, ComponentHandler):
         timeout: int,
         with_live: bool = True,
         max_retries: int = 0,
+        proxy: str | None = None,
     ):
-        super().__init__(timeout=timeout, max_retries=max_retries)
+        super().__init__(timeout=timeout, max_retries=max_retries, proxy=proxy)
         self.query = query
         self.limit = limit
         self.language = language
