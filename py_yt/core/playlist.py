@@ -73,20 +73,41 @@ class PlaylistCore(RequestCore):
         self.url.strip("/")
 
         _id = re.search(r"(?<=list=)([a-zA-Z0-9+/=_-]+)", self.url).group()
-        browseId = "VL" + _id if not _id.startswith("VL") else _id
 
-        self.url = (
-            "https://www.youtube.com/youtubei/v1/browse"
-            + "?"
-            + urlencode(
-                {
-                    "key": searchKey,
-                }
+        if _id.startswith("RD"):
+            # YouTube Mix Playlist
+            video_id_match = re.search(r"(?<=v=)([a-zA-Z0-9_-]+)", self.url)
+            video_id = video_id_match.group() if video_id_match else None
+
+            self.url = (
+                "https://www.youtube.com/youtubei/v1/next"
+                + "?"
+                + urlencode(
+                    {
+                        "key": searchKey,
+                    }
+                )
             )
-        )
-        self.data = {
-            "browseId": browseId,
-        }
+            self.data = {
+                "playlistId": _id,
+            }
+            if video_id:
+                self.data["videoId"] = video_id
+        else:
+            browseId = "VL" + _id if not _id.startswith("VL") else _id
+
+            self.url = (
+                "https://www.youtube.com/youtubei/v1/browse"
+                + "?"
+                + urlencode(
+                    {
+                        "key": searchKey,
+                    }
+                )
+            )
+            self.data = {
+                "browseId": browseId,
+            }
         self.data.update(copy.deepcopy(requestPayload))
 
     async def __makeAsyncRequest(self) -> int:
@@ -116,197 +137,272 @@ class PlaylistCore(RequestCore):
             raise Exception("ERROR: Could not parse YouTube response.")
 
     def __getComponents(self) -> None:
-        # print(self.responseSource)
-        sidebar = self.responseSource["sidebar"]["playlistSidebarRenderer"]["items"]
-        inforenderer = sidebar[0]["playlistSidebarPrimaryInfoRenderer"]
-        channel_details_available = len(sidebar) != 1
-        channelrenderer = (
-            sidebar[1]["playlistSidebarSecondaryInfoRenderer"]["videoOwner"][
-                "videoOwnerRenderer"
-            ]
-            if channel_details_available
-            else None
-        )
-        videorenderer: list = self.__getFirstValue(
-            self.responseSource,
-            [
-                "contents",
-                "twoColumnBrowseResultsRenderer",
-                "tabs",
-                None,
-                "tabRenderer",
-                "content",
-                "sectionListRenderer",
-                "contents",
-                None,
-                "itemSectionRenderer",
-                "contents",
-                None,
-                "playlistVideoListRenderer",
-                "contents",
-            ],
-        )
-        videos = []
-        for video in videorenderer:
-            try:
-                video = video["playlistVideoRenderer"]
-                j = {
-                    "id": self.__getValue(video, ["videoId"]),
-                    "thumbnails": self.__getValue(video, ["thumbnail", "thumbnails"]),
-                    "title": self.__getValue(video, ["title", "runs", 0, "text"]),
-                    "channel": {
-                        "name": self.__getValue(
-                            video, ["shortBylineText", "runs", 0, "text"]
-                        ),
-                        "id": self.__getValue(
+        if "sidebar" in self.responseSource:
+            # Traditional browse response
+            sidebar = self.responseSource["sidebar"]["playlistSidebarRenderer"]["items"]
+            inforenderer = sidebar[0]["playlistSidebarPrimaryInfoRenderer"]
+            channel_details_available = len(sidebar) != 1
+            channelrenderer = (
+                sidebar[1]["playlistSidebarSecondaryInfoRenderer"]["videoOwner"][
+                    "videoOwnerRenderer"
+                ]
+                if channel_details_available
+                else None
+            )
+            videorenderer: list = self.__getFirstValue(
+                self.responseSource,
+                [
+                    "contents",
+                    "twoColumnBrowseResultsRenderer",
+                    "tabs",
+                    None,
+                    "tabRenderer",
+                    "content",
+                    "sectionListRenderer",
+                    "contents",
+                    None,
+                    "itemSectionRenderer",
+                    "contents",
+                    None,
+                    "playlistVideoListRenderer",
+                    "contents",
+                ],
+            )
+            videos = []
+            for video in videorenderer:
+                try:
+                    video = video["playlistVideoRenderer"]
+                    j = {
+                        "id": self.__getValue(video, ["videoId"]),
+                        "thumbnails": self.__getValue(video, ["thumbnail", "thumbnails"]),
+                        "title": self.__getValue(video, ["title", "runs", 0, "text"]),
+                        "channel": {
+                            "name": self.__getValue(
+                                video, ["shortBylineText", "runs", 0, "text"]
+                            ),
+                            "id": self.__getValue(
+                                video,
+                                [
+                                    "shortBylineText",
+                                    "runs",
+                                    0,
+                                    "navigationEndpoint",
+                                    "browseEndpoint",
+                                    "browseId",
+                                ],
+                            ),
+                            "link": self.__getValue(
+                                video,
+                                [
+                                    "shortBylineText",
+                                    "runs",
+                                    0,
+                                    "navigationEndpoint",
+                                    "browseEndpoint",
+                                    "canonicalBaseUrl",
+                                ],
+                            ),
+                        },
+                        "duration": self.__getValue(video, ["lengthText", "simpleText"]),
+                        "accessibility": {
+                            "title": self.__getValue(
+                                video,
+                                ["title", "accessibility", "accessibilityData", "label"],
+                            ),
+                            "duration": self.__getValue(
+                                video,
+                                [
+                                    "lengthText",
+                                    "accessibility",
+                                    "accessibilityData",
+                                    "label",
+                                ],
+                            ),
+                        },
+                        "link": "https://www.youtube.com"
+                        + self.__getValue(
                             video,
                             [
-                                "shortBylineText",
-                                "runs",
-                                0,
                                 "navigationEndpoint",
-                                "browseEndpoint",
-                                "browseId",
+                                "commandMetadata",
+                                "webCommandMetadata",
+                                "url",
                             ],
                         ),
-                        "link": self.__getValue(
-                            video,
-                            [
-                                "shortBylineText",
-                                "runs",
-                                0,
-                                "navigationEndpoint",
-                                "browseEndpoint",
-                                "canonicalBaseUrl",
-                            ],
-                        ),
-                    },
-                    "duration": self.__getValue(video, ["lengthText", "simpleText"]),
-                    "accessibility": {
-                        "title": self.__getValue(
-                            video,
-                            ["title", "accessibility", "accessibilityData", "label"],
-                        ),
-                        "duration": self.__getValue(
-                            video,
-                            [
-                                "lengthText",
-                                "accessibility",
-                                "accessibilityData",
-                                "label",
-                            ],
-                        ),
-                    },
-                    "link": "https://www.youtube.com"
-                    + self.__getValue(
-                        video,
+                        "isPlayable": self.__getValue(video, ["isPlayable"]),
+                    }
+                    videos.append(j)
+                except:
+                    pass
+
+            playlistElement = {
+                "info": {
+                    "id": self.__getValue(
+                        inforenderer,
                         [
+                            "title",
+                            "runs",
+                            0,
                             "navigationEndpoint",
-                            "commandMetadata",
-                            "webCommandMetadata",
-                            "url",
+                            "watchEndpoint",
+                            "playlistId",
                         ],
                     ),
-                    "isPlayable": self.__getValue(video, ["isPlayable"]),
-                }
-                videos.append(j)
-            except:
-                pass
-
-        playlistElement = {
-            "info": {
-                "id": self.__getValue(
-                    inforenderer,
-                    [
-                        "title",
-                        "runs",
-                        0,
-                        "navigationEndpoint",
-                        "watchEndpoint",
-                        "playlistId",
-                    ],
-                ),
-                "thumbnails": self.__getValue(
-                    inforenderer,
-                    [
-                        "thumbnailRenderer",
-                        "playlistVideoThumbnailRenderer",
-                        "thumbnail",
-                        "thumbnails",
-                    ],
-                ),
-                "title": self.__getValue(inforenderer, ["title", "runs", 0, "text"]),
-                "videoCount": self.__getValue(
-                    inforenderer, ["stats", 0, "runs", 0, "text"]
-                ),
-                "viewCount": self.__getValue(inforenderer, ["stats", 1, "simpleText"]),
-                "link": self.__getValue(
-                    self.responseSource,
-                    ["microformat", "microformatDataRenderer", "urlCanonical"],
-                ),
-                "channel": {
-                    "id": (
-                        self.__getValue(
-                            channelrenderer,
-                            [
-                                "title",
-                                "runs",
-                                0,
-                                "navigationEndpoint",
-                                "browseEndpoint",
-                                "browseId",
-                            ],
-                        )
-                        if channel_details_available
-                        else None
+                    "thumbnails": self.__getValue(
+                        inforenderer,
+                        [
+                            "thumbnailRenderer",
+                            "playlistVideoThumbnailRenderer",
+                            "thumbnail",
+                            "thumbnails",
+                        ],
                     ),
-                    "name": (
-                        self.__getValue(channelrenderer, ["title", "runs", 0, "text"])
-                        if channel_details_available
-                        else None
+                    "title": self.__getValue(inforenderer, ["title", "runs", 0, "text"]),
+                    "videoCount": self.__getValue(
+                        inforenderer, ["stats", 0, "runs", 0, "text"]
                     ),
-                    "detailsAvailable": channel_details_available,
-                    "link": (
-                        "https://www.youtube.com"
-                        + self.__getValue(
-                            channelrenderer,
-                            [
-                                "title",
-                                "runs",
-                                0,
-                                "navigationEndpoint",
-                                "browseEndpoint",
-                                "canonicalBaseUrl",
-                            ],
-                        )
-                        if channel_details_available
-                        else None
+                    "viewCount": self.__getValue(inforenderer, ["stats", 1, "simpleText"]),
+                    "link": self.__getValue(
+                        self.responseSource,
+                        ["microformat", "microformatDataRenderer", "urlCanonical"],
                     ),
-                    "thumbnails": (
-                        self.__getValue(channelrenderer, ["thumbnail", "thumbnails"])
-                        if channel_details_available
-                        else None
-                    ),
+                    "channel": {
+                        "id": (
+                            self.__getValue(
+                                channelrenderer,
+                                [
+                                    "title",
+                                    "runs",
+                                    0,
+                                    "navigationEndpoint",
+                                    "browseEndpoint",
+                                    "browseId",
+                                ],
+                            )
+                            if channel_details_available
+                            else None
+                        ),
+                        "name": (
+                            self.__getValue(channelrenderer, ["title", "runs", 0, "text"])
+                            if channel_details_available
+                            else None
+                        ),
+                        "detailsAvailable": channel_details_available,
+                        "link": (
+                            "https://www.youtube.com"
+                            + self.__getValue(
+                                channelrenderer,
+                                [
+                                    "title",
+                                    "runs",
+                                    0,
+                                    "navigationEndpoint",
+                                    "browseEndpoint",
+                                    "canonicalBaseUrl",
+                                ],
+                            )
+                            if channel_details_available
+                            else None
+                        ),
+                        "thumbnails": (
+                            self.__getValue(channelrenderer, ["thumbnail", "thumbnails"])
+                            if channel_details_available
+                            else None
+                        ),
+                    },
                 },
-            },
-            "videos": videos,
-        }
-        if self.componentMode == "getInfo":
-            self.playlistComponent = playlistElement["info"]
-        elif self.componentMode == "getVideos":
-            self.playlistComponent = {"videos": videos}
-        else:
-            self.playlistComponent = playlistElement
-        self.continuationKey = self.__getValue(
-            videorenderer,
-            [
-                -1,
-                "continuationItemRenderer",
-                "continuationEndpoint",
-                "continuationCommand",
-                "token",
-            ],
-        )
+                "videos": videos,
+            }
+            if self.componentMode == "getInfo":
+                self.playlistComponent = playlistElement["info"]
+            elif self.componentMode == "getVideos":
+                self.playlistComponent = {"videos": videos}
+            else:
+                self.playlistComponent = playlistElement
+            self.continuationKey = self.__getValue(
+                videorenderer,
+                [
+                    -1,
+                    "continuationItemRenderer",
+                    "continuationEndpoint",
+                    "continuationCommand",
+                    "token",
+                ],
+            )
+        elif "contents" in self.responseSource:
+            # YouTube Mix Playlist (next endpoint)
+            playlist = self.responseSource["contents"]["twoColumnWatchNextResults"][
+                "playlist"
+            ]["playlist"]
+            videorenderer = playlist.get("contents", [])
+            videos = []
+            for video in videorenderer:
+                try:
+                    if "playlistPanelVideoRenderer" in video:
+                        video = video["playlistPanelVideoRenderer"]
+                        j = {
+                            "id": self.__getValue(video, ["videoId"]),
+                            "thumbnails": self.__getValue(
+                                video, ["thumbnail", "thumbnails"]
+                            ),
+                            "title": self.__getValue(
+                                video, ["title", "simpleText"]
+                            ) or self.__getValue(video, ["title", "runs", 0, "text"]),
+                            "channel": {
+                                "name": self.__getValue(
+                                    video, ["shortBylineText", "runs", 0, "text"]
+                                ),
+                                "id": self.__getValue(
+                                    video,
+                                    [
+                                        "shortBylineText",
+                                        "runs",
+                                        0,
+                                        "navigationEndpoint",
+                                        "browseEndpoint",
+                                        "browseId",
+                                    ],
+                                ),
+                                "link": "https://www.youtube.com"
+                                + self.__getValue(
+                                    video,
+                                    [
+                                        "shortBylineText",
+                                        "runs",
+                                        0,
+                                        "navigationEndpoint",
+                                        "browseEndpoint",
+                                        "canonicalBaseUrl",
+                                    ],
+                                ),
+                            },
+                            "duration": self.__getValue(
+                                video, ["lengthText", "simpleText"]
+                            ),
+                            "link": "https://www.youtube.com/watch?v="
+                            + self.__getValue(video, ["videoId"]),
+                        }
+                        videos.append(j)
+                except:
+                    pass
+            playlistElement = {
+                "info": {
+                    "id": playlist.get("playlistId"),
+                    "title": playlist.get("title"),
+                    "videoCount": str(len(videos)),
+                    "link": "https://www.youtube.com/playlist?list="
+                    + playlist.get("playlistId"),
+                    "channel": None,
+                },
+                "videos": videos,
+            }
+            if self.componentMode == "getInfo":
+                self.playlistComponent = playlistElement["info"]
+            elif self.componentMode == "getVideos":
+                self.playlistComponent = {"videos": videos}
+            else:
+                self.playlistComponent = playlistElement
+            self.continuationKey = None
 
     def __getNextComponents(self) -> None:
         self.continuationKey = None
