@@ -95,10 +95,7 @@ class RelatedVideosCore(RequestCore, ComponentHandler):
             
             if not secondary_results:
                 secondary_results = self._getValue(self.responseSource, ["contents", "singleColumnWatchNextResults", "results", "results", "contents"])
-            
-            if not secondary_results:
-                secondary_results = self._getValue(self.responseSource, ["contents", "singleColumnWatchNextResults", "results", "results", "contents"])
-            
+
             if secondary_results:
                 contents = secondary_results
         else:
@@ -112,7 +109,6 @@ class RelatedVideosCore(RequestCore, ComponentHandler):
             return
 
         for element in contents:
-            # print(f"Element keys: {element.keys()}")
             if "compactVideoRenderer" in element:
                 self.resultComponents.append(self._getCompactVideoComponent(element))
             elif "videoWithContextRenderer" in element:
@@ -123,12 +119,12 @@ class RelatedVideosCore(RequestCore, ComponentHandler):
                 nested_contents = self._getValue(element, ["itemSectionRenderer", "contents"])
                 if nested_contents:
                     for nested in nested_contents:
-                         if "compactVideoRenderer" in nested:
-                             self.resultComponents.append(self._getCompactVideoComponent(nested))
-                         elif "videoWithContextRenderer" in nested:
-                             self.resultComponents.append(self._getVideoWithContextComponent(nested))
-            elif "compactPlaylistRenderer" in element:
-                self.resultComponents.append(self._getCompactPlaylistComponent(element))
+                        if len(self.resultComponents) >= self.limit:
+                             break
+                        if "compactVideoRenderer" in nested:
+                            self.resultComponents.append(self._getCompactVideoComponent(nested))
+                        elif "videoWithContextRenderer" in nested:
+                            self.resultComponents.append(self._getVideoWithContextComponent(nested))
             elif "continuationItemRenderer" in element:
                 self.continuationKey = self._getValue(element, ["continuationItemRenderer", "continuationEndpoint", "continuationCommand", "token"])
 
