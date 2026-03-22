@@ -1,10 +1,12 @@
 import copy
 from typing import Union
 
+from py_yt.core.browse import BrowseCore
 from py_yt.core.channel import ChannelCore
 from py_yt.core.constants import ResultMode, ChannelRequestType
 from py_yt.core.hashtag import HashtagCore
 from py_yt.core.playlist import PlaylistCore
+from py_yt.core.recommendations import RelatedVideosCore
 from py_yt.core.suggestions import SuggestionsCore
 from py_yt.core.transcript import TranscriptCore
 from py_yt.core.video import VideoCore
@@ -1894,3 +1896,66 @@ class Channel(ChannelCore):
         channel_core = ChannelCore(channel_id, request_type)
         await channel_core.async_create()
         return channel_core.result
+
+
+class Recommendations:
+    """Gets recommendations from YouTube.
+    
+    Recommendations include Home page recommendations and related videos for a given video link or ID.
+    """
+
+    @staticmethod
+    async def getHome(
+        limit: int = 20,
+        language: str = "en",
+        region: str = "US",
+        timeout: int = 20,
+    ) -> dict:
+        """Fetches recommendations from the YouTube Home page.
+
+        Args:
+            limit (int, optional): Sets limit to the number of results. Defaults to 20.
+            language (str, optional): Sets the result language. Defaults to 'en'.
+            region (str, optional): Sets the result region. Defaults to 'US'.
+            timeout (int, optional): Sets the request timeout. Defaults to 20.
+
+        Returns:
+            dict: Returns dictionary containing the recommendations.
+        """
+        browse = BrowseCore(
+            browse_id="FEwhat_to_watch",
+            limit=limit,
+            language=language,
+            region=region,
+            timeout=timeout,
+        )
+        return await browse.next()
+
+    @staticmethod
+    async def getRelated(
+        video_link: str,
+        limit: int = 20,
+        language: str = "en",
+        region: str = "US",
+        timeout: int = 20,
+    ) -> dict:
+        """Fetches related videos (Up Next) for the given video link or ID.
+
+        Args:
+            video_link (str): link or ID of the video on YouTube.
+            limit (int, optional): Sets limit to the number of results. Defaults to 20.
+            language (str, optional): Sets the result language. Defaults to 'en'.
+            region (str, optional): Sets the result region. Defaults to 'US'.
+            timeout (int, optional): Sets the request timeout. Defaults to 20.
+
+        Returns:
+            dict: Returns dictionary containing the related videos.
+        """
+        related = RelatedVideosCore(
+            video_link=video_link,
+            limit=limit,
+            language=language,
+            region=region,
+            timeout=timeout,
+        )
+        return await related.next()
