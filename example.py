@@ -172,7 +172,7 @@ async def main():
     hashtag = Hashtag("ncs", limit=1)
     result = await hashtag.next()
     print(result)
-
+    """
     print(await Transcript.get("https://www.youtube.com/watch?v=L7kF4MXXCoA"))
 
     url = "https://www.youtube.com/watch?v=-1xu0IP35FI"
@@ -183,6 +183,7 @@ async def main():
             url, transcript_en["languages"][-1]["params"]
         )
         print(transcript_2)
+    """
 
     print(await Channel.get("UC_aEa8K-EOJ3D6gOs7HcyNg"))
 

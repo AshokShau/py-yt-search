@@ -97,4 +97,20 @@ class SuggestionsCore(RequestCore):
 
     async def __makeAsyncRequest(self) -> None:
         request = await self.asyncGetRequest()
+        if request is None:
+            raise Exception("ERROR: Could not make request.")
         self.response = await request.text()
+
+    def __result(self, mode: int) -> Union[dict, str]:
+        searchSuggestions = []
+
+        self.__parseSource()
+        for element in self.responseSource:
+            if type(element) is list:
+                for searchSuggestionElement in element:
+                    searchSuggestions.append(searchSuggestionElement[0])
+                break
+        if mode == ResultMode.dict:
+            return {"result": searchSuggestions}
+        elif mode == ResultMode.json:
+            return json.dumps({"result": searchSuggestions}, indent=4)

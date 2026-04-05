@@ -66,6 +66,8 @@ class PlaylistCore(RequestCore):
         if self.continuationKey:
             self.prepare_next_request()
             statusCode = await self.asyncPostRequest()
+            if statusCode is None:
+                raise Exception("ERROR: Could not make request.")
             self.response = await statusCode.text()
             if statusCode.status == 200:
                 self.next_post_processing()
@@ -118,6 +120,8 @@ class PlaylistCore(RequestCore):
     async def __makeAsyncRequest(self) -> int:
         self.prepare_first_request()
         request = await self.asyncPostRequest()
+        if request is None:
+            raise Exception("ERROR: Could not make request.")
         self.response = await request.text()
         return request.status
 
