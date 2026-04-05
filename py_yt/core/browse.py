@@ -57,8 +57,8 @@ class BrowseCore(RequestCore, ComponentHandler):
         self._getRequestBody()
         response = await self.asyncPostRequest()
         if response:
-            self.response = response.text
-            self.responseSource = response.json()
+            self.response = await response.text()
+            self.responseSource = await response.json()
         else:
             raise Exception("ERROR: Could not make request.")
 

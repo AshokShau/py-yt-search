@@ -38,8 +38,8 @@ class ChannelCore(RequestCore):
             "lastEdited": getValue(i, ["publishedTimeText", "simpleText"]),
         }
 
-    def parse_response(self):
-        response = self.data.json()
+    async def parse_response(self):
+        response = await self.data.json()
 
         thumbnails = []
         try:
@@ -201,8 +201,8 @@ class ChannelCore(RequestCore):
             "playlists": playlists,
         }
 
-    def parse_next_response(self):
-        response = self.data.json()
+    async def parse_next_response(self):
+        response = await self.data.json()
 
         self.continuation = None
 
@@ -238,7 +238,7 @@ class ChannelCore(RequestCore):
             return
         self.prepare_request()
         self.data = await self.asyncPostRequest()
-        self.parse_next_response()
+        await self.parse_next_response()
 
     def has_more_playlists(self):
         return self.continuation is not None
@@ -246,4 +246,4 @@ class ChannelCore(RequestCore):
     async def async_create(self):
         self.prepare_request()
         self.data = await self.asyncPostRequest()
-        self.parse_response()
+        await self.parse_response()

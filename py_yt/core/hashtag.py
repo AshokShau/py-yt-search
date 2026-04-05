@@ -4,8 +4,9 @@ from typing import Union
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
-import httpx
+import aiohttp
 
+from py_yt.core.session import get_session
 from py_yt.core.constants import (
     videoElementKey,
     ResultMode,
@@ -115,22 +116,24 @@ class HashtagCore(ComponentHandler):
             "gl": self.region,
         }
         try:
-            async with httpx.AsyncClient(proxy=self.proxy) as client:
-                response = await client.post(
-                    "https://www.youtube.com/youtubei/v1/search",
-                    params={
-                        "key": searchKey,
-                    },
-                    headers={
-                        "User-Agent": userAgent,
-                    },
-                    json=requestBody,
-                    timeout=self.timeout,
-                )
-                response = response.json()
+            session = await get_session()
+            timeout = aiohttp.ClientTimeout(total=self.timeout)
+            response = await session.post(
+                "https://www.youtube.com/youtubei/v1/search",
+                params={
+                    "key": searchKey,
+                },
+                headers={
+                    "User-Agent": userAgent,
+                },
+                json=requestBody,
+                proxy=self.proxy,
+                timeout=timeout,
+            )
+            response_json = await response.json()
         except:
             raise Exception("ERROR: Could not make request.")
-        content = self._getValue(response, contentPath)
+        content = self._getValue(response_json, contentPath)
         for item in self._getValue(content, [0, "itemSectionRenderer", "contents"]):
             if hashtagElementKey in item.keys():
                 self.params = self._getValue(
@@ -187,19 +190,21 @@ class HashtagCore(ComponentHandler):
         if self.continuationKey:
             requestBody["continuation"] = self.continuationKey
         try:
-            async with httpx.AsyncClient(proxy=self.proxy) as client:
-                response = await client.post(
-                    "https://www.youtube.com/youtubei/v1/browse",
-                    params={
-                        "key": searchKey,
-                    },
-                    headers={
-                        "User-Agent": userAgent,
-                    },
-                    json=requestBody,
-                    timeout=self.timeout,
-                )
-                self.response = response.content
+            session = await get_session()
+            timeout = aiohttp.ClientTimeout(total=self.timeout)
+            response = await session.post(
+                "https://www.youtube.com/youtubei/v1/browse",
+                params={
+                    "key": searchKey,
+                },
+                headers={
+                    "User-Agent": userAgent,
+                },
+                json=requestBody,
+                proxy=self.proxy,
+                timeout=timeout,
+            )
+            self.response = await response.read()
         except:
             raise Exception("ERROR: Could not make request.")
 

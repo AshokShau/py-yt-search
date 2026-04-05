@@ -10,7 +10,7 @@ from py_yt.core.requests import RequestCore
 CLIENTS = {
     "MWEB": {
         "context": {
-            "client": {"clientName": "MWEB", "clientVersion": "2.20240425.01.00"}
+            "client": {"clientName": "WEB", "clientVersion": "2.20251021.01.00"}
         },
         "api_key": "AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8",
     },
@@ -110,8 +110,8 @@ class VideoCore(RequestCore):
                 f"Video link: {video_link}, Request parameters: {request_params}"
             )
 
-        self.response = response.text
-        if response.status_code == 200:
+        self.response = await response.text()
+        if response.status == 200:
             self.post_request_processing()
         else:
             raise Exception("ERROR: Invalid status code.")
@@ -134,7 +134,7 @@ class VideoCore(RequestCore):
     async def async_html_create(self):
         self.prepare_html_request()
         response = await self.asyncPostRequest()
-        self.HTMLresponseSource = response.json()
+        self.HTMLresponseSource = await response.json()
 
     def __parseSource(self) -> None:
         try:

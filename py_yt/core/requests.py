@@ -1,8 +1,10 @@
 import os
 import logging
+import asyncio
+import aiohttp
 
-import httpx
 from py_yt.core.constants import userAgent
+from py_yt.core.session import get_session
 
 logger = logging.getLogger(__name__)
 
@@ -16,73 +18,89 @@ class RequestCore:
         self.timeout: float = timeout
         self.max_retries: int = max_retries
         self.proxy_url: str | None = proxy or os.environ.get("PROXY_URL")
-        client_args = {"timeout": self.timeout, "proxy": self.proxy_url}
 
-        self.async_client = httpx.AsyncClient(**client_args)
-
-    async def asyncPostRequest(self) -> httpx.Response | None:
+    async def asyncPostRequest(self) -> aiohttp.ClientResponse | None:
         """Sends an asynchronous POST request."""
         if not self.url:
             raise ValueError("URL must be set before making a request.")
 
         headers = {"User-Agent": userAgent}
+        session = await get_session()
+        timeout = aiohttp.ClientTimeout(total=self.timeout)
 
         for _ in range(self.max_retries + 1):
             try:
-                response = await self.async_client.post(
+                response = await session.post(
                     self.url,
                     headers=headers,
                     json=self.data,
+                    proxy=self.proxy_url,
+                    timeout=timeout
                 )
-                response.raise_for_status()
-                return response
-            except httpx.HTTPStatusError as e:
+                try:
+                    response.raise_for_status()
+                    await response.read()
+                    return response
+                except Exception:
+                    response.release()
+                    raise
+            except aiohttp.ClientResponseError as e:
                 logger.error(
                     "HTTP error during HTTP request",
                     extra={
-                        "status_code": getattr(e.response, "status_code", None),
-                        "response_text": getattr(e.response, "text", None),
+                        "status_code": e.status,
+                        "response_text": e.message,
                     },
                     exc_info=True,
                 )
-            except httpx.RequestError as e:
+            except (aiohttp.ClientError, asyncio.TimeoutError) as e:
                 logger.error(
                     "Request error during HTTP request",
                     extra={
-                        "request_url": getattr(getattr(e, "request", None), "url", None),
+                        "request_url": self.url,
                     },
                     exc_info=True,
                 )
         return None
 
-    async def asyncGetRequest(self) -> httpx.Response | None:
+    async def asyncGetRequest(self) -> aiohttp.ClientResponse | None:
         """Sends an asynchronous GET request."""
         if not self.url:
             raise ValueError("URL must be set before making a request.")
         cookies = {"CONSENT": "YES+1"}
+        session = await get_session()
+        timeout = aiohttp.ClientTimeout(total=self.timeout)
+
         for _ in range(self.max_retries + 1):
             try:
-                response = await self.async_client.get(
+                response = await session.get(
                     self.url,
                     headers={"User-Agent": userAgent},
                     cookies=cookies,
+                    proxy=self.proxy_url,
+                    timeout=timeout
                 )
-                response.raise_for_status()
-                return response
-            except httpx.HTTPStatusError as e:
+                try:
+                    response.raise_for_status()
+                    await response.read()
+                    return response
+                except Exception:
+                    response.release()
+                    raise
+            except aiohttp.ClientResponseError as e:
                 logger.error(
                     "HTTP error during HTTP request",
                     extra={
-                        "status_code": getattr(e.response, "status_code", None),
-                        "response_text": getattr(e.response, "text", None),
+                        "status_code": e.status,
+                        "response_text": e.message,
                     },
                     exc_info=True,
                 )
-            except httpx.RequestError as e:
+            except (aiohttp.ClientError, asyncio.TimeoutError) as e:
                 logger.error(
                     "Request error during HTTP request",
                     extra={
-                        "request_url": getattr(getattr(e, "request", None), "url", None),
+                        "request_url": self.url,
                     },
                     exc_info=True,
                 )

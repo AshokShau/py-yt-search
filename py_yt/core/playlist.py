@@ -66,8 +66,8 @@ class PlaylistCore(RequestCore):
         if self.continuationKey:
             self.prepare_next_request()
             statusCode = await self.asyncPostRequest()
-            self.response = statusCode.text
-            if statusCode.status_code == 200:
+            self.response = await statusCode.text()
+            if statusCode.status == 200:
                 self.next_post_processing()
             else:
                 raise Exception("ERROR: Invalid status code.")
@@ -118,8 +118,8 @@ class PlaylistCore(RequestCore):
     async def __makeAsyncRequest(self) -> int:
         self.prepare_first_request()
         request = await self.asyncPostRequest()
-        self.response = request.text
-        return request.status_code
+        self.response = await request.text()
+        return request.status
 
     def prepare_next_request(self):
         requestBody = copy.deepcopy(requestPayload)

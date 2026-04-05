@@ -177,11 +177,12 @@ async def main():
     url = "https://www.youtube.com/watch?v=-1xu0IP35FI"
 
     transcript_en = await Transcript.get(url)
-    # you actually don't have to pass a valid URL in following Transcript call. You can input an empty string, but I do recommend still inputing a valid URL.
-    transcript_2 = await Transcript.get(
-        url, transcript_en["languages"][-1]["params"]
-    )  # in my case, it'd output Spanish.
-    print(transcript_2)
+    if transcript_en.get("languages"):
+        # you actually don't have to pass a valid URL in following Transcript call. You can input an empty string, but I do recommend still inputing a valid URL.
+        transcript_2 = await Transcript.get(
+            url, transcript_en["languages"][-1]["params"]
+        )  # in my case, it'd output Spanish.
+        print(transcript_2)
 
     print(await Channel.get("UC_aEa8K-EOJ3D6gOs7HcyNg"))
 

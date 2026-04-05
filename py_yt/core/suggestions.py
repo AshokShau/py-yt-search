@@ -97,4 +97,4 @@ class SuggestionsCore(RequestCore):
 
     async def __makeAsyncRequest(self) -> None:
         request = await self.asyncGetRequest()
-        self.response = request.text
+        self.response = await request.text()

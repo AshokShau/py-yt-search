@@ -55,7 +55,7 @@ class RelatedVideosCore(RequestCore, ComponentHandler):
         self._getRequestBody()
         response = await self.asyncPostRequest()
         if response:
-            self.responseSource = response.json()
+            self.responseSource = await response.json()
         else:
             raise Exception("ERROR: Could not make request.")
 
