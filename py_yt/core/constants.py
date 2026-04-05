@@ -1,8 +1,10 @@
 requestPayload = {
     "context": {
         "client": {
+            "hl": "en",
+            "gl": "US",
             "clientName": "WEB",
-            "clientVersion": "2.20251021.01.00",
+            "clientVersion": "2.20230728.00.00",
             "newVisitorCookie": True,
         },
         "user": {
@@ -11,7 +13,7 @@ requestPayload = {
     }
 }
 
-userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.77 Safari/537.36"
+userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
 
 videoElementKey = "videoRenderer"
 channelElementKey = "channelRenderer"

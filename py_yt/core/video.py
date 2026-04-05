@@ -93,8 +93,8 @@ class VideoCore(RequestCore):
             + urlencode(
                 {
                     "key": searchKey,
-                    "contentCheckOk": True,
-                    "racyCheckOk": True,
+                    "contentCheckOk": "true",
+                    "racyCheckOk": "true",
                     "videoId": getVideoId(self.videoLink),
                 }
             )
@@ -105,8 +105,8 @@ class VideoCore(RequestCore):
         self.prepare_innertube_request()
         response = await self.asyncPostRequest()
         if response is None:
-            video_link = getattr(self, "video_link", None)
-            request_params = getattr(self, "innertube_request", None)
+            video_link = getattr(self, "videoLink", None)
+            request_params = getattr(self, "data", None)
             raise Exception(
                 f"The request returned an empty response. "
                 f"Video link: {video_link}, Request parameters: {request_params}"
@@ -125,8 +125,8 @@ class VideoCore(RequestCore):
             + urlencode(
                 {
                     "key": searchKey,
-                    "contentCheckOk": True,
-                    "racyCheckOk": True,
+                    "contentCheckOk": "true",
+                    "racyCheckOk": "true",
                     "videoId": getVideoId(self.videoLink),
                 }
             )
