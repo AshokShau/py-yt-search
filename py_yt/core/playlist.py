@@ -174,6 +174,8 @@ class PlaylistCore(RequestCore):
                 ],
             )
             videos = []
+            if videorenderer is None:
+                videorenderer = []
             for video in videorenderer:
                 try:
                     video = video["playlistVideoRenderer"]
