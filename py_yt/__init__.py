@@ -17,8 +17,10 @@ from .search import (
 )
 
 from .handlers import ComponentHandler, RequestHandler
+from .core.session import close_session
 
 __all__ = [
+    "close_session",
     "Video",
     "Playlist",
     "Suggestions",

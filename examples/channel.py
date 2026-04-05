@@ -1,5 +1,5 @@
 import asyncio
-from py_yt import Channel
+from py_yt import Channel, close_session
 
 async def main():
     """
@@ -19,6 +19,8 @@ async def main():
     while channel.has_more_playlists():
         await channel.next()
         print(f"Playlists loaded after next(): {len(channel.result.get('playlists', []))}")
+
+    await close_session()
 
 if __name__ == "__main__":
     asyncio.run(main())

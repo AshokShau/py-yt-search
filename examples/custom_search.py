@@ -1,5 +1,5 @@
 import asyncio
-from py_yt import CustomSearch
+from py_yt import CustomSearch, close_session
 from py_yt.core.constants import VideoSortOrder
 
 async def main():
@@ -23,6 +23,8 @@ async def main():
     )
     customResult = await customSearch.next()
     print(customResult)
+
+    await close_session()
 
 if __name__ == "__main__":
     asyncio.run(main())

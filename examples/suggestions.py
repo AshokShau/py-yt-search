@@ -1,5 +1,5 @@
 import asyncio
-from py_yt import Suggestions
+from py_yt import Suggestions, close_session
 
 async def main():
     """
@@ -8,6 +8,8 @@ async def main():
     """
     suggestions = await Suggestions.get("NoCopyrightSounds", language="en", region="US")
     print(suggestions)
+
+    await close_session()
 
 if __name__ == "__main__":
     asyncio.run(main())

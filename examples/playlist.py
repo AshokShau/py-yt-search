@@ -1,5 +1,5 @@
 import asyncio
-from py_yt import Playlist
+from py_yt import Playlist, close_session
 
 async def main():
     """
@@ -40,6 +40,8 @@ async def main():
         print(f"Videos Retrieved: {len(playlist_iter.videos)}")
 
     print("Found all the videos.")
+
+    await close_session()
 
 if __name__ == "__main__":
     asyncio.run(main())

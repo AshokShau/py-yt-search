@@ -1,5 +1,5 @@
 import asyncio
-from py_yt import Video
+from py_yt import Video, close_session
 
 async def main():
     """
@@ -19,6 +19,8 @@ async def main():
 
     videoInfoMusic = await Video.getInfo("https://music.youtube.com/watch?v=RLsYNh7GN-k&si=tgb4LsBN8zEU-iST")
     print(videoInfoMusic)
+
+    await close_session()
 
 if __name__ == "__main__":
     asyncio.run(main())

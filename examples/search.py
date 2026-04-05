@@ -1,5 +1,5 @@
 import asyncio
-from py_yt import Search, VideosSearch, ChannelsSearch, PlaylistsSearch
+from py_yt import Search, VideosSearch, ChannelsSearch, PlaylistsSearch, close_session
 
 async def main():
     """
@@ -63,6 +63,8 @@ async def main():
     for video in result_page3.get("result", []):
         index += 1
         print(f'{index} - {video.get("title", "No Title")}')
+
+    await close_session()
 
 if __name__ == "__main__":
     asyncio.run(main())
