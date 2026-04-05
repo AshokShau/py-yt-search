@@ -15,14 +15,16 @@ CLIENTS = {
         "api_key": "AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8",
     },
     "ANDROID": {
-        "context": {"client": {"clientName": "ANDROID", "clientVersion": "19.02.39"}},
+        "context": {
+            "client": {"clientName": "WEB", "clientVersion": "2.20251021.01.00"}
+        },
         "api_key": "AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8",
     },
     "ANDROID_EMBED": {
         "context": {
             "client": {
-                "clientName": "ANDROID",
-                "clientVersion": "19.02.39",
+                "clientName": "WEB",
+                "clientVersion": "2.20251021.01.00",
                 "clientScreen": "EMBED",
             }
         },

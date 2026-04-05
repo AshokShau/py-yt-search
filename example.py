@@ -51,6 +51,7 @@ async def main():
     playlist = Playlist(
         "https://www.youtube.com/playlist?list=PLRBp0Fe2GpgmsW46rJyudVFlY6IYjFBIK"
     )
+
     while playlist.hasMoreVideos:
         print("Getting more videos...")
         await playlist.getNextVideos()
@@ -178,15 +179,13 @@ async def main():
 
     transcript_en = await Transcript.get(url)
     if transcript_en.get("languages"):
-        # you actually don't have to pass a valid URL in following Transcript call. You can input an empty string, but I do recommend still inputing a valid URL.
         transcript_2 = await Transcript.get(
             url, transcript_en["languages"][-1]["params"]
-        )  # in my case, it'd output Spanish.
+        )
         print(transcript_2)
 
     print(await Channel.get("UC_aEa8K-EOJ3D6gOs7HcyNg"))
 
-    # Retrieve playlists of a channel
     channel = Channel("UC_aEa8K-EOJ3D6gOs7HcyNg")
     await channel.init()
     print(len(channel.result["playlists"]))
@@ -197,4 +196,3 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-
