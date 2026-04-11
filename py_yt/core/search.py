@@ -1,5 +1,6 @@
 import copy
 import json
+import re
 from typing import Union
 from urllib.parse import urlencode
 
@@ -50,14 +51,27 @@ class SearchCore(RequestCore, RequestHandler, ComponentHandler):
         self._parseSource()
 
     def _getRequestBody(self):
-        """Fixes #47"""
         requestBody = copy.deepcopy(requestPayload)
         requestBody["query"] = self.query
         requestBody["client"] = {
             "hl": self.language,
             "gl": self.region,
         }
-        if self.searchPreferences:
+        is_video_id_or_url = False
+        video_patterns = [
+            r"(?:https?:\/\/)?(?:www\.)?youtube\.com\/watch\?v=([a-zA-Z0-9_-]{11})",
+            r"(?:https?:\/\/)?(?:www\.)?youtu\.be\/([a-zA-Z0-9_-]{11})",
+            r"(?:https?:\/\/)?(?:www\.)?youtube\.com\/embed\/([a-zA-Z0-9_-]{11})",
+            r"(?:https?:\/\/)?(?:www\.)?youtube\.com\/v\/([a-zA-Z0-9_-]{11})",
+            r"^([a-zA-Z0-9_-]{11})$",
+        ]
+        for pattern in video_patterns:
+            if match := re.search(pattern, self.query):
+                is_video_id_or_url = True
+                requestBody["query"] = match.group(1)
+                break
+
+        if self.searchPreferences and not is_video_id_or_url:
             requestBody["params"] = self.searchPreferences
         if self.continuationKey:
             requestBody["continuation"] = self.continuationKey
