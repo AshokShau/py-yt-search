@@ -67,8 +67,7 @@ class SearchCore(RequestCore, RequestHandler, ComponentHandler):
             r"^([a-zA-Z0-9_-]{11})$",
         ]
         for pattern in video_patterns:
-            match = re.search(pattern, self.query)
-            if match:
+            if match := re.search(pattern, self.query):
                 is_video_id_or_url = True
                 requestBody["query"] = match.group(1)
                 break
