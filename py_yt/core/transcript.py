@@ -126,17 +126,17 @@ class TranscriptCore(RequestCore):
                 languages.append(j)
         self.result = {"segments": segments, "languages": languages}
 
-    async def async_create(self):
+    async def create(self):
         if not self.key:
             self.prepare_params_request()
-            r = await self.asyncPostRequest()
+            r = await self.postRequest()
             if not r:
                 return
             end = await self.extract_continuation_key(r)
             if end:
                 return
         self.prepare_transcript_request()
-        response = await self.asyncPostRequest()
+        response = await self.postRequest()
         if response:
             try:
                 self.data = await response.json()

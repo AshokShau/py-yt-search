@@ -2,8 +2,6 @@ import copy
 import json
 from typing import Union
 from urllib.parse import urlencode
-from urllib.request import Request, urlopen
-
 import aiohttp
 
 from py_yt.core.session import get_session
@@ -58,7 +56,7 @@ class HashtagCore(ComponentHandler):
         elif mode == ResultMode.dict:
             return {"result": self.resultComponents}
 
-    def next(self) -> bool:
+    async def next(self) -> bool:
         """Gets the videos from the next page. Call result
         Returns:
             bool: Returns True if getting more results was successful.
@@ -66,49 +64,13 @@ class HashtagCore(ComponentHandler):
         self.response = None
         self.resultComponents = []
         if self.continuationKey:
-            self._makeRequest()
+            await self._makeRequest()
             self._getComponents()
         if self.resultComponents:
             return True
         return False
 
-    def _getParams(self) -> None:
-        requestBody = copy.deepcopy(requestPayload)
-        requestBody["query"] = "#" + self.hashtag
-        requestBody["client"] = {
-            "hl": self.language,
-            "gl": self.region,
-        }
-        requestBodyBytes = json.dumps(requestBody).encode("utf_8")
-        request = Request(
-            "https://www.youtube.com/youtubei/v1/search"
-            + "?"
-            + urlencode(
-                {
-                    "key": searchKey,
-                }
-            ),
-            data=requestBodyBytes,
-            headers={
-                "Content-Type": "application/json; charset=utf-8",
-                "Content-Length": len(requestBodyBytes),
-                "User-Agent": userAgent,
-            },
-        )
-        try:
-            response = urlopen(request, timeout=self.timeout).read().decode("utf_8")
-        except:
-            raise Exception("ERROR: Could not make request.")
-        content = self._getValue(json.loads(response), contentPath)
-        for item in self._getValue(content, [0, "itemSectionRenderer", "contents"]):
-            if hashtagElementKey in item.keys():
-                self.params = self._getValue(
-                    item[hashtagElementKey],
-                    ["onTapCommand", "browseEndpoint", "params"],
-                )
-                return
-
-    async def _asyncGetParams(self) -> None:
+    async def _getParams(self) -> None:
         requestBody = copy.deepcopy(requestPayload)
         requestBody["query"] = "#" + self.hashtag
         requestBody["client"] = {
@@ -142,42 +104,7 @@ class HashtagCore(ComponentHandler):
                 )
                 return
 
-    def _makeRequest(self) -> None:
-        if self.params == None:
-            return
-        requestBody = copy.deepcopy(requestPayload)
-        requestBody["browseId"] = hashtagBrowseKey
-        requestBody["params"] = self.params
-        requestBody["client"] = {
-            "hl": self.language,
-            "gl": self.region,
-        }
-        if self.continuationKey:
-            requestBody["continuation"] = self.continuationKey
-        requestBodyBytes = json.dumps(requestBody).encode("utf_8")
-        request = Request(
-            "https://www.youtube.com/youtubei/v1/browse"
-            + "?"
-            + urlencode(
-                {
-                    "key": searchKey,
-                }
-            ),
-            data=requestBodyBytes,
-            headers={
-                "Content-Type": "application/json; charset=utf-8",
-                "Content-Length": len(requestBodyBytes),
-                "User-Agent": userAgent,
-            },
-        )
-        try:
-            self.response = (
-                urlopen(request, timeout=self.timeout).read().decode("utf_8")
-            )
-        except:
-            raise Exception("ERROR: Could not make request.")
-
-    async def _asyncMakeRequest(self) -> None:
+    async def _makeRequest(self) -> None:
         if self.params == None:
             return
         requestBody = copy.deepcopy(requestPayload)

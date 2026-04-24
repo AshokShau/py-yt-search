@@ -40,6 +40,7 @@ class ChannelCore(RequestCore):
 
     async def parse_response(self):
         response = await self.data.json()
+        self.responseSource = response
 
         thumbnails = []
         try:
@@ -132,6 +133,23 @@ class ChannelCore(RequestCore):
                 "channelAboutFullMetadataRenderer",
             ],
         )
+        if not metadata:
+            # Fallback for new About tab structure
+            metadata = getValue(
+                tabData,
+                [
+                    "content",
+                    "sectionListRenderer",
+                    "contents",
+                    0,
+                    "itemSectionRenderer",
+                    "contents",
+                    0,
+                    "aboutChannelRenderer",
+                    "metadata",
+                    "aboutChannelMetadataViewModel",
+                ],
+            )
 
         self.result = {
             "id": getValue(
@@ -187,11 +205,13 @@ class ChannelCore(RequestCore):
             ),
             "views": (
                 getValue(metadata, ["viewCountText", "simpleText"])
+                or getValue(metadata, ["viewCount"])
                 if metadata
                 else None
             ),
             "joinedDate": (
                 getValue(metadata, ["joinedDateText", "runs", -1, "text"])
+                or getValue(metadata, ["joinedDateText"])
                 if metadata
                 else None
             ),
@@ -233,17 +253,17 @@ class ChannelCore(RequestCore):
                 )
             # TODO: Handle other types like gridShowRenderer
 
-    async def async_next(self):
+    async def next(self):
         if not self.continuation:
             return
         self.prepare_request()
-        self.data = await self.asyncPostRequest()
+        self.data = await self.postRequest()
         await self.parse_next_response()
 
     def has_more_playlists(self):
         return self.continuation is not None
 
-    async def async_create(self):
+    async def create(self):
         self.prepare_request()
-        self.data = await self.asyncPostRequest()
+        self.data = await self.postRequest()
         await self.parse_response()

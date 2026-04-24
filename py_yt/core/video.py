@@ -76,13 +76,9 @@ class VideoCore(RequestCore):
         self.enableHTML = enable_html
         self.overridedClient = overrided_client
 
-    # We call this when we use only HTML
-    def post_request_only_html_processing(self):
-        self.__getVideoComponent(self.componentMode)
-        self.result = self.__videoComponent
-
     def post_request_processing(self):
-        self.__parseSource()
+        if hasattr(self, "response"):
+            self.__parseSource()
         self.__getVideoComponent(self.componentMode)
         self.result = self.__videoComponent
 
@@ -101,9 +97,9 @@ class VideoCore(RequestCore):
         )
         self.data = copy.deepcopy(CLIENTS[self.overridedClient])
 
-    async def async_create(self):
+    async def create(self):
         self.prepare_innertube_request()
-        response = await self.asyncPostRequest()
+        response = await self.postRequest()
         if response is None:
             video_link = getattr(self, "videoLink", None)
             request_params = getattr(self, "data", None)
@@ -133,9 +129,9 @@ class VideoCore(RequestCore):
         )
         self.data = CLIENTS["MWEB"]
 
-    async def async_html_create(self):
+    async def html_create(self):
         self.prepare_html_request()
-        response = await self.asyncPostRequest()
+        response = await self.postRequest()
         self.HTMLresponseSource = await response.json()
 
     def __parseSource(self) -> None:

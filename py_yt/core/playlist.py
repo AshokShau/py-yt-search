@@ -15,6 +15,7 @@ from py_yt.core.constants import (
     continuationItemKey,
 )
 from py_yt.core.requests import RequestCore
+from py_yt.core.componenthandler import getValue as coreGetValue
 
 K = TypeVar("K")
 T = TypeVar("T")
@@ -47,8 +48,8 @@ class PlaylistCore(RequestCore):
         else:
             self.result = self.playlistComponent
 
-    async def async_create(self):
-        statusCode = await self.__makeAsyncRequest()
+    async def create(self):
+        statusCode = await self.__makeRequest()
         if statusCode == 200:
             self.post_processing()
         else:
@@ -62,10 +63,10 @@ class PlaylistCore(RequestCore):
         else:
             self.result = self.playlistComponent
 
-    async def _async_next(self):
+    async def _next(self):
         if self.continuationKey:
             self.prepare_next_request()
-            statusCode = await self.asyncPostRequest()
+            statusCode = await self.postRequest()
             if statusCode is None:
                 raise Exception("ERROR: Could not make request.")
             self.response = await statusCode.text()
@@ -74,7 +75,7 @@ class PlaylistCore(RequestCore):
             else:
                 raise Exception("ERROR: Invalid status code.")
         else:
-            await self.async_create()
+            await self.create()
 
     def prepare_first_request(self):
         self.url.strip("/")
@@ -117,9 +118,9 @@ class PlaylistCore(RequestCore):
             }
         self.data.update(copy.deepcopy(requestPayload))
 
-    async def __makeAsyncRequest(self) -> int:
+    async def __makeRequest(self) -> int:
         self.prepare_first_request()
-        request = await self.asyncPostRequest()
+        request = await self.postRequest()
         if request is None:
             raise Exception("ERROR: Could not make request.")
         self.response = await request.text()
@@ -704,21 +705,7 @@ class PlaylistCore(RequestCore):
     def __getValue(
         self, source: dict, path: Iterable[str]
     ) -> Union[str, int, dict, None]:
-        value = source
-        for key in path:
-            if type(key) is str:
-                if key in value.keys():
-                    value = value[key]
-                else:
-                    value = None
-                    break
-            elif type(key) is int:
-                if len(value) != 0:
-                    value = value[key]
-                else:
-                    value = None
-                    break
-        return value
+        return coreGetValue(source, list(path))
 
     def __getAllWithKey(self, source: Iterable[Mapping[K, T]], key: K) -> Iterable[T]:
         for item in source:
