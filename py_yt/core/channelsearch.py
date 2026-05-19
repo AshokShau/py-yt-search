@@ -83,12 +83,12 @@ class ChannelSearchCore(RequestCore, ComponentHandler):
         )
         self.data = requestBody
 
-    async def _asyncRequest(self) -> None:
+    async def _makeRequest(self) -> None:
         self._getRequestBody()
 
-        request = await self.asyncPostRequest()
+        request = await self.postRequest()
         try:
-            self.response = request.json()
+            self.response = await request.json()
         except:
             raise Exception("ERROR: Could not make request.")
 

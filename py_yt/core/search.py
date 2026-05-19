@@ -46,10 +46,6 @@ class SearchCore(RequestCore, RequestHandler, ComponentHandler):
         self.with_live = with_live
         self.continuationKey = None
 
-    def sync_create(self):
-        self._makeRequest()
-        self._parseSource()
-
     def _getRequestBody(self):
         requestBody = copy.deepcopy(requestPayload)
         requestBody["query"] = self.query
@@ -57,7 +53,6 @@ class SearchCore(RequestCore, RequestHandler, ComponentHandler):
             "hl": self.language,
             "gl": self.region,
         }
-
         is_video_id_or_url = False
         video_patterns = [
             r"(?:https?:\/\/)?(?:www\.)?youtube\.com\/watch\?v=([a-zA-Z0-9_-]{11})",
@@ -87,19 +82,11 @@ class SearchCore(RequestCore, RequestHandler, ComponentHandler):
         )
         self.data = requestBody
 
-    def _makeRequest(self) -> None:
+    async def _makeRequest(self) -> None:
         self._getRequestBody()
-        request = self.syncPostRequest()
-        try:
-            self.response = request.text
-        except:
-            raise Exception("ERROR: Could not make request.")
-
-    async def _makeAsyncRequest(self) -> None:
-        self._getRequestBody()
-        request = await self.asyncPostRequest()
+        request = await self.postRequest()
         if request:
-            self.response = request.text
+            self.response = await request.text()
         else:
             raise Exception("ERROR: Could not make request.")
 
@@ -117,31 +104,11 @@ class SearchCore(RequestCore, RequestHandler, ComponentHandler):
         elif mode == ResultMode.dict:
             return {"result": self.resultComponents}
 
-    def _next(self) -> bool:
-        """Gets the subsequent search result. Call result
-
-        Args:
-            mode (int, optional): Sets the type of result. Defaults to ResultMode.dict.
-
-        Returns:
-            Union[str, dict]: Returns True if getting more results was successful.
-        """
-        if self.continuationKey:
-            self.response = None
-            self.responseSource = None
-            self.resultComponents = []
-            self._makeRequest()
-            self._parseSource()
-            self._getComponents(*self.searchMode)
-            return True
-        else:
-            return False
-
-    async def _nextAsync(self) -> dict:
+    async def next(self) -> dict:
         self.response = None
         self.responseSource = None
         self.resultComponents = []
-        await self._makeAsyncRequest()
+        await self._makeRequest()
         self._parseSource()
         self._getComponents(*self.searchMode)
         return {

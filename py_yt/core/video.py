@@ -10,19 +10,21 @@ from py_yt.core.requests import RequestCore
 CLIENTS = {
     "MWEB": {
         "context": {
-            "client": {"clientName": "MWEB", "clientVersion": "2.20240425.01.00"}
+            "client": {"clientName": "WEB", "clientVersion": "2.20251021.01.00"}
         },
         "api_key": "AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8",
     },
     "ANDROID": {
-        "context": {"client": {"clientName": "ANDROID", "clientVersion": "19.02.39"}},
+        "context": {
+            "client": {"clientName": "WEB", "clientVersion": "2.20251021.01.00"}
+        },
         "api_key": "AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8",
     },
     "ANDROID_EMBED": {
         "context": {
             "client": {
-                "clientName": "ANDROID",
-                "clientVersion": "19.02.39",
+                "clientName": "WEB",
+                "clientVersion": "2.20251021.01.00",
                 "clientScreen": "EMBED",
             }
         },
@@ -74,13 +76,9 @@ class VideoCore(RequestCore):
         self.enableHTML = enable_html
         self.overridedClient = overrided_client
 
-    # We call this when we use only HTML
-    def post_request_only_html_processing(self):
-        self.__getVideoComponent(self.componentMode)
-        self.result = self.__videoComponent
-
     def post_request_processing(self):
-        self.__parseSource()
+        if hasattr(self, "response"):
+            self.__parseSource()
         self.__getVideoComponent(self.componentMode)
         self.result = self.__videoComponent
 
@@ -91,27 +89,27 @@ class VideoCore(RequestCore):
             + urlencode(
                 {
                     "key": searchKey,
-                    "contentCheckOk": True,
-                    "racyCheckOk": True,
+                    "contentCheckOk": "true",
+                    "racyCheckOk": "true",
                     "videoId": getVideoId(self.videoLink),
                 }
             )
         )
         self.data = copy.deepcopy(CLIENTS[self.overridedClient])
 
-    async def async_create(self):
+    async def create(self):
         self.prepare_innertube_request()
-        response = await self.asyncPostRequest()
+        response = await self.postRequest()
         if response is None:
-            video_link = getattr(self, "video_link", None)
-            request_params = getattr(self, "innertube_request", None)
+            video_link = getattr(self, "videoLink", None)
+            request_params = getattr(self, "data", None)
             raise Exception(
                 f"The request returned an empty response. "
                 f"Video link: {video_link}, Request parameters: {request_params}"
             )
 
-        self.response = response.text
-        if response.status_code == 200:
+        self.response = await response.text()
+        if response.status == 200:
             self.post_request_processing()
         else:
             raise Exception("ERROR: Invalid status code.")
@@ -123,18 +121,18 @@ class VideoCore(RequestCore):
             + urlencode(
                 {
                     "key": searchKey,
-                    "contentCheckOk": True,
-                    "racyCheckOk": True,
+                    "contentCheckOk": "true",
+                    "racyCheckOk": "true",
                     "videoId": getVideoId(self.videoLink),
                 }
             )
         )
         self.data = CLIENTS["MWEB"]
 
-    async def async_html_create(self):
+    async def html_create(self):
         self.prepare_html_request()
-        response = await self.asyncPostRequest()
-        self.HTMLresponseSource = response.json()
+        response = await self.postRequest()
+        self.HTMLresponseSource = await response.json()
 
     def __parseSource(self) -> None:
         try:

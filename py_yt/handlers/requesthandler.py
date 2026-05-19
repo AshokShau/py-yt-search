@@ -1,12 +1,10 @@
 import copy
 import json
 from urllib.parse import urlencode
-from urllib.request import Request, urlopen
 
 from py_yt.core.constants import (
     requestPayload,
     searchKey,
-    userAgent,
     contentPath,
     itemSectionKey,
     continuationItemKey,
@@ -18,40 +16,6 @@ from py_yt.handlers.componenthandler import ComponentHandler
 
 
 class RequestHandler(ComponentHandler):
-    def _makeRequest(self) -> None:
-        requestBody = copy.deepcopy(requestPayload)
-        requestBody["query"] = self.query
-        requestBody["client"] = {
-            "hl": self.language,
-            "gl": self.region,
-        }
-        if self.searchPreferences:
-            requestBody["params"] = self.searchPreferences
-        if self.continuationKey:
-            requestBody["continuation"] = self.continuationKey
-        requestBodyBytes = json.dumps(requestBody).encode("utf_8")
-        request = Request(
-            "https://www.youtube.com/youtubei/v1/search"
-            + "?"
-            + urlencode(
-                {
-                    "key": searchKey,
-                }
-            ),
-            data=requestBodyBytes,
-            headers={
-                "Content-Type": "application/json; charset=utf-8",
-                "Content-Length": len(requestBodyBytes),
-                "User-Agent": userAgent,
-            },
-        )
-        try:
-            self.response = (
-                urlopen(request, timeout=self.timeout).read().decode("utf_8")
-            )
-        except:
-            raise Exception("ERROR: Could not make request.")
-
     def _parseSource(self) -> None:
         try:
             if not self.continuationKey:

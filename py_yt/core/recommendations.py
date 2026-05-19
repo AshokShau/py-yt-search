@@ -2,7 +2,7 @@ import copy
 from typing import Union
 from urllib.parse import urlencode
 
-from py_yt.core.componenthandler import getVideoId
+from py_yt.core.componenthandler import getVideoId, getValue
 from py_yt.core.constants import (
     requestPayload,
     searchKey,
@@ -51,34 +51,20 @@ class RelatedVideosCore(RequestCore, ComponentHandler):
         )
         self.data = requestBody
 
-    async def _makeAsyncRequest(self) -> None:
+    async def _makeRequest(self) -> None:
         self._getRequestBody()
-        response = await self.asyncPostRequest()
+        response = await self.postRequest()
         if response:
-            self.responseSource = response.json()
+            self.responseSource = await response.json()
         else:
             raise Exception("ERROR: Could not make request.")
 
     def _getValue(self, source: dict, path: list) -> Union[str, int, dict, list, None]:
-        value = source
-        for key in path:
-            if type(key) is str:
-                if isinstance(value, dict) and key in value.keys():
-                    value = value[key]
-                else:
-                    value = None
-                    break
-            elif type(key) is int:
-                if isinstance(value, list) and len(value) > key:
-                    value = value[key]
-                else:
-                    value = None
-                    break
-        return value
+        return getValue(source, path)
 
     async def next(self) -> dict:
         self.resultComponents = []
-        await self._makeAsyncRequest()
+        await self._makeRequest()
         self._parseSource()
         return {
             "result": self.resultComponents,

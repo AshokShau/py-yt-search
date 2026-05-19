@@ -64,7 +64,7 @@ class SuggestionsCore(RequestCore):
         elif mode == ResultMode.json:
             return json.dumps({"result": searchSuggestions}, indent=4)
 
-    async def _getAsync(
+    async def _get(
         self, query: str, mode: int = ResultMode.dict
     ) -> Union[dict, str]:
         self.url = (
@@ -82,7 +82,7 @@ class SuggestionsCore(RequestCore):
             )
         )
 
-        await self.__makeAsyncRequest()
+        await self.__makeRequest()
         return self._post_request_processing(mode)
 
     def __parseSource(self) -> None:
@@ -95,6 +95,22 @@ class SuggestionsCore(RequestCore):
             logging.error("ERROR: Could not parse YouTube response. Raw response: %r", self.response)
             raise Exception("ERROR: Could not parse YouTube response.") from e
 
-    async def __makeAsyncRequest(self) -> None:
-        request = await self.asyncGetRequest()
-        self.response = request.text
+    async def __makeRequest(self) -> None:
+        request = await self.getRequest()
+        if request is None:
+            raise Exception("ERROR: Could not make request.")
+        self.response = await request.text()
+
+    def __result(self, mode: int) -> Union[dict, str]:
+        searchSuggestions = []
+
+        self.__parseSource()
+        for element in self.responseSource:
+            if type(element) is list:
+                for searchSuggestionElement in element:
+                    searchSuggestions.append(searchSuggestionElement[0])
+                break
+        if mode == ResultMode.dict:
+            return {"result": searchSuggestions}
+        elif mode == ResultMode.json:
+            return json.dumps({"result": searchSuggestions}, indent=4)

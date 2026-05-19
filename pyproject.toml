@@ -1,0 +1,62 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "py-yt-search"
+dynamic = ["version"]
+description = "A Python package for searching and retrieving YouTube data using py-yt-search."
+readme = "README.md"
+authors = [
+    { name = "AshokShau", email = "abishnoi69@outlook.com" },
+]
+license = { text = "MIT" }
+requires-python = ">=3.9"
+keywords = [
+    "youtube",
+    "youtube-api",
+    "video-search",
+    "playlist",
+    "channel",
+    "search",
+    "py_yt",
+    "py-yt-search",
+    "py-yt",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "License :: OSI Approved :: MIT License",
+    "Topic :: Internet",
+    "Topic :: Multimedia :: Video",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = [
+    "aiohttp>=3.13,<4.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/AshokShau/py-yt"
+Download = "https://github.com/AshokShau/py-yt-search/releases/latest"
+Source = "https://github.com/AshokShau/py-yt-search"
+
+[tool.hatch.version]
+path = "py_yt/__version__.py"
+
+[tool.hatch.build.targets.sdist]
+include = ["py_yt"]
+exclude = ["examples"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["py_yt"]
+exclude = ["examples"]

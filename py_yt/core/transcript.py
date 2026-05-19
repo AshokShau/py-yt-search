@@ -22,13 +22,16 @@ class TranscriptCore(RequestCore):
         self.data = copy.deepcopy(requestPayload)
         self.data["videoId"] = getVideoId(self.videoLink)
 
-    def extract_continuation_key(self, r):
-        j = r.json()
+    async def extract_continuation_key(self, r):
+        try:
+            j = await r.json()
+        except Exception:
+            self.result = {"segments": [], "languages": []}
+            return True
         panels = getValue(j, ["engagementPanels"])
         if not panels:
-            raise Exception(
-                "Failed to create first request - No engagementPanels is present."
-            )
+            self.result = {"segments": [], "languages": []}
+            return True
         key = ""
         for panel in panels:
             panel = panel["engagementPanelSectionListRenderer"]
@@ -123,15 +126,22 @@ class TranscriptCore(RequestCore):
                 languages.append(j)
         self.result = {"segments": segments, "languages": languages}
 
-    async def async_create(self):
+    async def create(self):
         if not self.key:
             self.prepare_params_request()
-            r = await self.asyncPostRequest()
-            end = self.extract_continuation_key(r)
+            r = await self.postRequest()
+            if not r:
+                return
+            end = await self.extract_continuation_key(r)
             if end:
                 return
         self.prepare_transcript_request()
-        response = await self.asyncPostRequest()
+        response = await self.postRequest()
         if response:
-            self.data = response.json()
+            try:
+                self.data = await response.json()
+            except Exception as e:
+                import logging
+                logging.error("ERROR: Could not parse YouTube response inside extract_transcript.", exc_info=True)
+                return
             self.extract_transcript()
