@@ -19,12 +19,39 @@ class RequestCore:
         self.max_retries: int = max_retries
         self.proxy_url: str | None = proxy or os.environ.get("PROXY_URL")
 
+    def _get_headers(self) -> dict[str, str]:
+        headers = {
+            "User-Agent": userAgent,
+            "Origin": "https://www.youtube.com",
+            "Referer": "https://www.youtube.com/",
+            "Accept-Language": "en-US,en;q=0.9",
+        }
+        if isinstance(self.data, dict):
+            client_info = self.data.get("context", {}).get("client", {})
+            client_name = client_info.get("clientName")
+            client_version = client_info.get("clientVersion")
+
+            client_name_map = {
+                "WEB": "1",
+                "MWEB": "2",
+                "ANDROID": "3",
+                "IOS": "5",
+                "TVHTML5_SIMPLY_EMBEDDED_PLAYER": "85",
+            }
+            if client_name:
+                headers["X-YouTube-Client-Name"] = client_name_map.get(
+                    str(client_name), str(client_name)
+                )
+            if client_version:
+                headers["X-YouTube-Client-Version"] = str(client_version)
+        return headers
+
     async def postRequest(self) -> aiohttp.ClientResponse | None:
         """Sends an asynchronous POST request."""
         if not self.url:
             raise ValueError("URL must be set before making a request.")
 
-        headers = {"User-Agent": userAgent}
+        headers = self._get_headers()
         session = await get_session()
         timeout = aiohttp.ClientTimeout(total=self.timeout)
 
@@ -78,7 +105,7 @@ class RequestCore:
             try:
                 response = await session.get(
                     self.url,
-                    headers={"User-Agent": userAgent},
+                    headers=self._get_headers(),
                     cookies=cookies,
                     proxy=self.proxy_url,
                     timeout=timeout,

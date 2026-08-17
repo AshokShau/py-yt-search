@@ -6,7 +6,8 @@ _session = None
 async def get_session() -> aiohttp.ClientSession:
     """Returns a shared aiohttp.ClientSession, creating it if it doesn't exist."""
     global _session
-    if _session is None or _session.closed:
+    current_loop = asyncio.get_running_loop()
+    if _session is None or _session.closed or _session._loop != current_loop or _session._loop.is_closed():
         _session = aiohttp.ClientSession()
     return _session
 

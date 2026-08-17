@@ -36,7 +36,7 @@ class BrowseCore(RequestCore, ComponentHandler):
         requestBody = copy.deepcopy(requestPayload)
 
         requestBody["context"]["client"]["clientName"] = "MWEB"
-        requestBody["context"]["client"]["clientVersion"] = "2.20240425.01.00"
+        requestBody["context"]["client"]["clientVersion"] = "2.20251021.01.00"
         requestBody["browseId"] = self.browseId
         requestBody["context"]["client"]["hl"] = self.language
         requestBody["context"]["client"]["gl"] = self.region

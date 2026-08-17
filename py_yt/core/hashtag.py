@@ -73,21 +73,25 @@ class HashtagCore(ComponentHandler):
     async def _getParams(self) -> None:
         requestBody = copy.deepcopy(requestPayload)
         requestBody["query"] = "#" + self.hashtag
-        requestBody["client"] = {
-            "hl": self.language,
-            "gl": self.region,
-        }
+        requestBody["context"]["client"]["hl"] = self.language
+        requestBody["context"]["client"]["gl"] = self.region
         try:
             session = await get_session()
             timeout = aiohttp.ClientTimeout(total=self.timeout)
+            headers = {
+                "User-Agent": userAgent,
+                "Origin": "https://www.youtube.com",
+                "Referer": "https://www.youtube.com/",
+                "Accept-Language": "en-US,en;q=0.9",
+                "X-YouTube-Client-Name": "1",
+                "X-YouTube-Client-Version": requestBody["context"]["client"]["clientVersion"],
+            }
             response = await session.post(
                 "https://www.youtube.com/youtubei/v1/search",
                 params={
                     "key": searchKey,
                 },
-                headers={
-                    "User-Agent": userAgent,
-                },
+                headers=headers,
                 json=requestBody,
                 proxy=self.proxy,
                 timeout=timeout,
@@ -110,23 +114,27 @@ class HashtagCore(ComponentHandler):
         requestBody = copy.deepcopy(requestPayload)
         requestBody["browseId"] = hashtagBrowseKey
         requestBody["params"] = self.params
-        requestBody["client"] = {
-            "hl": self.language,
-            "gl": self.region,
-        }
+        requestBody["context"]["client"]["hl"] = self.language
+        requestBody["context"]["client"]["gl"] = self.region
         if self.continuationKey:
             requestBody["continuation"] = self.continuationKey
         try:
             session = await get_session()
             timeout = aiohttp.ClientTimeout(total=self.timeout)
+            headers = {
+                "User-Agent": userAgent,
+                "Origin": "https://www.youtube.com",
+                "Referer": "https://www.youtube.com/",
+                "Accept-Language": "en-US,en;q=0.9",
+                "X-YouTube-Client-Name": "1",
+                "X-YouTube-Client-Version": requestBody["context"]["client"]["clientVersion"],
+            }
             response = await session.post(
                 "https://www.youtube.com/youtubei/v1/browse",
                 params={
                     "key": searchKey,
                 },
-                headers={
-                    "User-Agent": userAgent,
-                },
+                headers=headers,
                 json=requestBody,
                 proxy=self.proxy,
                 timeout=timeout,

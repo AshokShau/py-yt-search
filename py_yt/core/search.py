@@ -49,10 +49,8 @@ class SearchCore(RequestCore, RequestHandler, ComponentHandler):
     def _getRequestBody(self):
         requestBody = copy.deepcopy(requestPayload)
         requestBody["query"] = self.query
-        requestBody["client"] = {
-            "hl": self.language,
-            "gl": self.region,
-        }
+        requestBody["context"]["client"]["hl"] = self.language
+        requestBody["context"]["client"]["gl"] = self.region
         is_video_id_or_url = False
         video_patterns = [
             r"(?:https?:\/\/)?(?:www\.)?youtube\.com\/watch\?v=([a-zA-Z0-9_-]{11})",

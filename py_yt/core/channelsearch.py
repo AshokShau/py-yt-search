@@ -66,10 +66,8 @@ class ChannelSearchCore(RequestCore, ComponentHandler):
     def _getRequestBody(self):
         requestBody = copy.deepcopy(requestPayload)
         requestBody["query"] = self.query
-        requestBody["client"] = {
-            "hl": self.language,
-            "gl": self.region,
-        }
+        requestBody["context"]["client"]["hl"] = self.language
+        requestBody["context"]["client"]["gl"] = self.region
         requestBody["params"] = self.searchPreferences
         requestBody["browseId"] = self.browseId
         self.url = (
