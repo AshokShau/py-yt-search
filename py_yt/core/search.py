@@ -33,10 +33,20 @@ class SearchCore(RequestCore, RequestHandler, ComponentHandler):
         searchPreferences: str,
         timeout: int,
         with_live: bool = True,
-        max_retries: int = 0,
+        max_retries: int = 2,
         proxy: str | None = None,
+        visitor_data: str | None = None,
+        po_token: str | None = None,
+        po_token_verifier=None,
     ):
-        super().__init__(timeout=timeout, max_retries=max_retries, proxy=proxy)
+        super().__init__(
+            timeout=timeout,
+            max_retries=max_retries,
+            proxy=proxy,
+            visitor_data=visitor_data,
+            po_token=po_token,
+            po_token_verifier=po_token_verifier,
+        )
         self.query = query
         self.limit = limit
         self.language = language
