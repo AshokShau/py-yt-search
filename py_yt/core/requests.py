@@ -14,6 +14,7 @@ from py_yt.core.session import (
     get_session_po_token,
     set_session_po_token,
     get_session_po_token_verifier,
+    get_token_lock,
 )
 
 logger = logging.getLogger(__name__)
@@ -93,55 +94,65 @@ class RequestCore:
         po_token = self.po_token or get_session_po_token()
         verifier = self.po_token_verifier or get_session_po_token_verifier()
 
-        if verifier and callable(verifier):
-            try:
-                if inspect.iscoroutinefunction(verifier):
-                    res = await verifier()
-                else:
-                    res = verifier()
+        if visitor_data and po_token and not verifier:
+            self.visitor_data = visitor_data
+            self.po_token = po_token
+            return visitor_data, po_token
 
-                if isinstance(res, tuple) and len(res) == 2:
-                    a, b = res
-                    if isinstance(a, str) and isinstance(b, str):
-                        if "Cg" in a or "%3D" in a or len(a) > len(b):
-                            visitor_data, po_token = a, b
-                        else:
-                            po_token, visitor_data = a, b
-                elif isinstance(res, dict):
-                    po_token = res.get("po_token") or res.get("poToken") or po_token
-                    visitor_data = res.get("visitor_data") or res.get("visitorData") or visitor_data
-                elif isinstance(res, str):
-                    po_token = res
-            except Exception as e:
-                logger.warning(f"Error calling po_token_verifier: {e}")
+        async with get_token_lock():
+            visitor_data = self.visitor_data or get_session_visitor_data()
+            po_token = self.po_token or get_session_po_token()
+            verifier = self.po_token_verifier or get_session_po_token_verifier()
 
-        if not po_token or not visitor_data:
-            prov_vd, prov_po = await self._fetch_from_pot_provider()
-            visitor_data = visitor_data or prov_vd
-            po_token = po_token or prov_po
+            if verifier and callable(verifier):
+                try:
+                    if inspect.iscoroutinefunction(verifier):
+                        res = await verifier()
+                    else:
+                        res = verifier()
 
-        if not po_token:
-            try:
-                from py_yt.botGuard.bot_guard import generate_po_token
-                video_id = getattr(self, "video_id", None) or "dQw4w9WgXcQ"
-                gen_pot = generate_po_token(video_id=video_id)
-                if gen_pot and isinstance(gen_pot, str):
-                    po_token = gen_pot
-            except Exception:
-                pass
+                    if isinstance(res, tuple) and len(res) == 2:
+                        a, b = res
+                        if isinstance(a, str) and isinstance(b, str):
+                            if "Cg" in a or "%3D" in a or len(a) > len(b):
+                                visitor_data, po_token = a, b
+                            else:
+                                po_token, visitor_data = a, b
+                    elif isinstance(res, dict):
+                        po_token = res.get("po_token") or res.get("poToken") or po_token
+                        visitor_data = res.get("visitor_data") or res.get("visitorData") or visitor_data
+                    elif isinstance(res, str):
+                        po_token = res
+                except Exception as e:
+                    logger.warning(f"Error calling po_token_verifier: {e}")
 
-        if not visitor_data:
-            auto_vd = await self._fetch_automatic_visitor_data()
-            if auto_vd:
-                visitor_data = auto_vd
+            if not po_token or not visitor_data:
+                prov_vd, prov_po = await self._fetch_from_pot_provider()
+                visitor_data = visitor_data or prov_vd
+                po_token = po_token or prov_po
 
-        self.visitor_data = visitor_data
-        self.po_token = po_token
-        if visitor_data:
-            set_session_visitor_data(visitor_data)
-        if po_token:
-            set_session_po_token(po_token)
-        return visitor_data, po_token
+            if not po_token:
+                try:
+                    from py_yt.botGuard.bot_guard import generate_po_token
+                    video_id = getattr(self, "video_id", None) or "dQw4w9WgXcQ"
+                    gen_pot = await asyncio.to_thread(generate_po_token, video_id=video_id)
+                    if gen_pot and isinstance(gen_pot, str):
+                        po_token = gen_pot
+                except Exception as e:
+                    logger.debug(f"botGuard token generation failed: {e}")
+
+            if not visitor_data:
+                auto_vd = await self._fetch_automatic_visitor_data()
+                if auto_vd:
+                    visitor_data = auto_vd
+
+            self.visitor_data = visitor_data
+            self.po_token = po_token
+            if visitor_data:
+                set_session_visitor_data(visitor_data)
+            if po_token:
+                set_session_po_token(po_token)
+            return visitor_data, po_token
 
     def _prepare_request_for_profile(self, profile_name: str) -> dict[str, str]:
         profile = CLIENT_PROFILES.get(profile_name, CLIENT_PROFILES["WEB"])
@@ -156,6 +167,8 @@ class RequestCore:
 
         if self.visitor_data:
             headers["X-Goog-Visitor-Id"] = self.visitor_data
+        else:
+            headers.pop("X-Goog-Visitor-Id", None)
 
         if isinstance(self.data, dict):
             context = self.data.setdefault("context", {})
@@ -164,8 +177,12 @@ class RequestCore:
             client["clientVersion"] = profile["clientVersion"]
             if self.visitor_data:
                 client["visitorData"] = self.visitor_data
+            else:
+                client.pop("visitorData", None)
             if self.po_token:
                 client["serviceIntegrityDimensions"] = {"poToken": self.po_token}
+            else:
+                client.pop("serviceIntegrityDimensions", None)
 
             client_name = client.get("clientName")
             client_version = client.get("clientVersion")

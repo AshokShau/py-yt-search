@@ -5,6 +5,17 @@ _session = None
 _visitor_data: str | None = None
 _po_token: str | None = None
 _po_token_verifier = None
+_token_lock: asyncio.Lock | None = None
+
+
+def get_token_lock() -> asyncio.Lock:
+    """Returns an asyncio.Lock for synchronized token resolution."""
+    global _token_lock
+    current_loop = asyncio.get_running_loop()
+    if _token_lock is None or getattr(_token_lock, "_loop", None) != current_loop:
+        _token_lock = asyncio.Lock()
+    return _token_lock
+
 
 def set_session_visitor_data(visitor_data: str | None) -> None:
     """Sets the persistent visitorData for session requests."""
