@@ -19,7 +19,7 @@ from py_yt.core.session import (
 
 logger = logging.getLogger(__name__)
 
-CLIENT_PROFILE_KEYS = ["WEB", "MWEB"]
+CLIENT_PROFILE_KEYS = ["WEB", "MWEB", "ANDROID_VR", "TVHTML5"]
 
 
 class RequestCore:
@@ -55,7 +55,7 @@ class RequestCore:
                         "hl": "en",
                         "gl": "US",
                         "clientName": "WEB",
-                        "clientVersion": "2.20251021.01.00",
+                        "clientVersion": "2.20260820.08.00",
                     }
                 }
             }
@@ -71,23 +71,6 @@ class RequestCore:
         except Exception as e:
             logger.debug(f"Automatic visitor_id fetch failed: {e}")
         return None
-
-    async def _fetch_from_pot_provider(self) -> tuple[str | None, str | None]:
-        pot_url = os.environ.get("POT_PROVIDER_URL")
-        if not pot_url:
-            return None, None
-        try:
-            session = await get_session()
-            timeout = aiohttp.ClientTimeout(total=2.0)
-            async with session.post(pot_url, json={}, proxy=self.proxy_url, timeout=timeout) as resp:
-                if resp.status == 200:
-                    data = await resp.json()
-                    po_token = data.get("poToken") or data.get("po_token")
-                    visitor_data = data.get("visitorData") or data.get("visitor_data")
-                    return visitor_data, po_token
-        except Exception:
-            pass
-        return None, None
 
     async def _resolve_tokens(self) -> tuple[str | None, str | None]:
         visitor_data = self.visitor_data or get_session_visitor_data()
@@ -126,11 +109,6 @@ class RequestCore:
                 except Exception as e:
                     logger.warning(f"Error calling po_token_verifier: {e}")
 
-            if not po_token or not visitor_data:
-                prov_vd, prov_po = await self._fetch_from_pot_provider()
-                visitor_data = visitor_data or prov_vd
-                po_token = po_token or prov_po
-
             if not po_token:
                 try:
                     from py_yt.botGuard.bot_guard import generate_po_token
@@ -162,7 +140,7 @@ class RequestCore:
             "Referer": "https://www.youtube.com/",
             "Accept-Language": "en-US,en;q=0.9",
             "X-YouTube-Client-Name": profile.get("clientCode", "1"),
-            "X-YouTube-Client-Version": profile.get("clientVersion", "2.20251021.01.00"),
+            "X-YouTube-Client-Version": profile.get("clientVersion", "2.20260820.08.00"),
         }
 
         if self.visitor_data:

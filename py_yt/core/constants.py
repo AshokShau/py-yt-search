@@ -4,7 +4,7 @@ requestPayload = {
             "hl": "en",
             "gl": "US",
             "clientName": "WEB",
-            "clientVersion": "2.20251021.01.00",
+            "clientVersion": "2.20260820.08.00",
             "newVisitorCookie": True,
         },
         "user": {
@@ -13,13 +13,13 @@ requestPayload = {
     }
 }
 
-userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36"
 
 CLIENT_PROFILES = {
     "WEB": {
         "clientName": "WEB",
-        "clientVersion": "2.20251021.01.00",
-        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+        "clientVersion": "2.20260820.08.00",
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36",
         "clientCode": "1",
     },
     "ANDROID_VR": {
@@ -30,13 +30,13 @@ CLIENT_PROFILES = {
     },
     "MWEB": {
         "clientName": "MWEB",
-        "clientVersion": "2.20251021.01.00",
+        "clientVersion": "2.20260821.00.00",
         "userAgent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1",
         "clientCode": "2",
     },
     "TVHTML5": {
         "clientName": "TVHTML5",
-        "clientVersion": "7.20251021.00.00",
+        "clientVersion": "7.20260819.16.00",
         "userAgent": "Mozilla/5.0 (ChromiumStylePlatform) Cobalt/Version",
         "clientCode": "7",
     },

@@ -29,13 +29,13 @@ def test_request_core_headers_with_client_data():
         "context": {
             "client": {
                 "clientName": "MWEB",
-                "clientVersion": "2.20251021.01.00",
+                "clientVersion": "2.20260821.00.00",
             }
         }
     }
     headers = req._get_headers()
     assert headers["X-YouTube-Client-Name"] == "2"
-    assert headers["X-YouTube-Client-Version"] == "2.20251021.01.00"
+    assert headers["X-YouTube-Client-Version"] == "2.20260821.00.00"
 
 
 def test_search_core_request_body():
@@ -51,7 +51,7 @@ def test_search_core_request_body():
     assert "client" not in search.data  # Ensure no top-level client key
     assert search.data["context"]["client"]["hl"] == "en"
     assert search.data["context"]["client"]["gl"] == "US"
-    assert search.data["context"]["client"]["clientVersion"] == "2.20251021.01.00"
+    assert search.data["context"]["client"]["clientVersion"] == "2.20260820.08.00"
 
 
 def test_channel_search_core_request_body():

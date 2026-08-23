@@ -10,14 +10,14 @@ def test_browse_core_request_body():
     browse = BrowseCore("FEwhat_to_watch")
     browse._getRequestBody()
     assert browse.data["context"]["client"]["clientName"] == "MWEB"
-    assert browse.data["context"]["client"]["clientVersion"] == "2.20251021.01.00"
+    assert browse.data["context"]["client"]["clientVersion"] == "2.20260821.00.00"
 
 
 def test_related_videos_core_request_body():
     rel = RelatedVideosCore("https://www.youtube.com/watch?v=dQw4w9WgXcQ")
     rel._getRequestBody()
     assert rel.data["context"]["client"]["clientName"] == "MWEB"
-    assert rel.data["context"]["client"]["clientVersion"] == "2.20251021.01.00"
+    assert rel.data["context"]["client"]["clientVersion"] == "2.20260821.00.00"
     assert rel.data["videoId"] == "dQw4w9WgXcQ"
 
 
@@ -30,7 +30,7 @@ def test_video_core_prepare_request():
         enable_html=False,
     )
     vc.prepare_innertube_request()
-    assert vc.data["context"]["client"]["clientVersion"] == "2.20251021.01.00"
+    assert vc.data["context"]["client"]["clientVersion"] == "2.20260820.08.00"
 
 
 @pytest.mark.asyncio
