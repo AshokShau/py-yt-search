@@ -1,9 +1,12 @@
 import copy
+import logging
 from urllib.parse import urlencode
 
 from py_yt.core.componenthandler import getVideoId, getValue
 from py_yt.core.constants import searchKey, requestPayload
 from py_yt.core.requests import RequestCore
+
+logger = logging.getLogger(__name__)
 
 
 class TranscriptCore(RequestCore):
@@ -141,7 +144,6 @@ class TranscriptCore(RequestCore):
             try:
                 self.data = await response.json()
             except Exception as e:
-                import logging
-                logging.exception("ERROR: Could not parse YouTube response inside extract_transcript.")
+                logger.error("Could not parse YouTube response inside extract_transcript.", exc_info=True)
                 return
             self.extract_transcript()
