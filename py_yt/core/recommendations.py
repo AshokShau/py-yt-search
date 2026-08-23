@@ -1,82 +1,70 @@
-import copy
-from typing import Any, Dict, List, Union
-from urllib.parse import urlencode
+from typing import Any, Dict, List, Optional
 
-from py_yt.core.componenthandler import getVideoId, getValue
-from py_yt.core.constants import (
-    requestPayload,
-    searchKey,
+from py_yt.core.componenthandler import (
+    build_channel_url,
+    build_playlist_url,
+    build_watch_url,
+    get_video_id,
 )
 from py_yt.core.requests import RequestCore
 from py_yt.handlers.componenthandler import ComponentHandler
 
 
 class RelatedVideosCore(RequestCore, ComponentHandler):
+    responseSource: Optional[Dict[str, Any]] = None
+
     def __init__(
         self,
         video_link: str,
         limit: int = 20,
         language: str = "en",
         region: str = "US",
-        timeout: int = 20,
+        timeout: float = 20.0,
         max_retries: int = 0,
-        proxy: str | None = None,
-    ):
+        proxy: Optional[str] = None,
+    ) -> None:
         super().__init__(timeout=timeout, max_retries=max_retries, proxy=proxy)
-        self.video_link = video_link
-        self.limit = limit
-        self.language = language
-        self.region = region
-        self.continuationKey = None
+        self.video_link: str = video_link
+        self.limit: int = limit
+        self.language: str = language
+        self.region: str = region
+        self.continuationKey: Optional[str] = None
         self.resultComponents: List[Dict[str, Any]] = []
 
-    def _getRequestBody(self):
-        requestBody = copy.deepcopy(requestPayload)
-        requestBody["context"]["client"]["clientName"] = "MWEB"
-        requestBody["context"]["client"]["clientVersion"] = "2.20260821.00.00"
-        requestBody["videoId"] = getVideoId(self.video_link)
-        requestBody["context"]["client"]["hl"] = self.language
-        requestBody["context"]["client"]["gl"] = self.region
-        if self.continuationKey:
-            requestBody["continuation"] = self.continuationKey
-
-        self.url = (
-            "https://www.youtube.com/youtubei/v1/next"
-            + "?"
-            + urlencode(
-                {
-                    "key": searchKey,
-                }
-            )
+    def _get_request_body(self) -> None:
+        self.url = self._build_url("next")
+        self.data = self._build_payload(
+            language=self.language,
+            region=self.region,
+            client_name="MWEB",
+            client_version="2.20260821.00.00",
+            videoId=get_video_id(self.video_link),
+            continuation=self.continuationKey,
         )
-        self.data = requestBody
 
-    async def _makeRequest(self) -> None:
-        self._getRequestBody()
-        response = await self.postRequest()
+    async def _make_request(self) -> None:
+        self._get_request_body()
+        response = await self.post_request()
         if response:
             self.responseSource = await response.json()
         else:
             raise Exception("ERROR: Could not make request.")
 
-    def _getValue(self, source: Any, path: List[Union[str, int, None]]) -> Any:
-        return getValue(source, path)
-
-    async def next(self) -> dict:
+    async def next(self) -> Dict[str, Any]:
         self.resultComponents = []
-        await self._makeRequest()
-        self._parseSource()
+        await self._make_request()
+        self._parse_source()
         return {
             "result": self.resultComponents,
         }
 
-    def _parseSource(self) -> None:
+    def _parse_source(self) -> None:
         if not self.responseSource:
             return
 
-        contents = []
+        contents: List[Any] = []
         if not self.continuationKey:
-            secondary_results = self._getValue(
+            secondary_results = self._get_value(
                 self.responseSource,
                 [
                     "contents",
@@ -87,7 +75,7 @@ class RelatedVideosCore(RequestCore, ComponentHandler):
                 ],
             )
             if not secondary_results:
-                secondary_results = self._getValue(
+                secondary_results = self._get_value(
                     self.responseSource,
                     [
                         "contents",
@@ -99,7 +87,7 @@ class RelatedVideosCore(RequestCore, ComponentHandler):
                 )
 
             if not secondary_results:
-                secondary_results = self._getValue(
+                secondary_results = self._get_value(
                     self.responseSource,
                     [
                         "contents",
@@ -113,7 +101,7 @@ class RelatedVideosCore(RequestCore, ComponentHandler):
             if secondary_results and isinstance(secondary_results, list):
                 contents = secondary_results
         else:
-            continuation_actions = self._getValue(
+            continuation_actions = self._get_value(
                 self.responseSource, ["onResponseReceivedEndpoints"]
             )
             if continuation_actions and isinstance(continuation_actions, list):
@@ -135,15 +123,15 @@ class RelatedVideosCore(RequestCore, ComponentHandler):
             if not isinstance(element, dict):
                 continue
             if "compactVideoRenderer" in element:
-                self.resultComponents.append(self._getCompactVideoComponent(element))
+                self.resultComponents.append(self._get_compact_video_component(element))
             elif "videoWithContextRenderer" in element:
                 self.resultComponents.append(
-                    self._getVideoWithContextComponent(element)
+                    self._get_video_with_context_component(element)
                 )
             elif "compactPlaylistRenderer" in element:
-                self.resultComponents.append(self._getCompactPlaylistComponent(element))
+                self.resultComponents.append(self._get_compact_playlist_component(element))
             elif "itemSectionRenderer" in element:
-                nested_contents = self._getValue(
+                nested_contents = self._get_value(
                     element, ["itemSectionRenderer", "contents"]
                 )
                 if nested_contents and isinstance(nested_contents, list):
@@ -154,14 +142,14 @@ class RelatedVideosCore(RequestCore, ComponentHandler):
                             break
                         if "compactVideoRenderer" in nested:
                             self.resultComponents.append(
-                                self._getCompactVideoComponent(nested)
+                                self._get_compact_video_component(nested)
                             )
                         elif "videoWithContextRenderer" in nested:
                             self.resultComponents.append(
-                                self._getVideoWithContextComponent(nested)
+                                self._get_video_with_context_component(nested)
                             )
             elif "continuationItemRenderer" in element:
-                self.continuationKey = self._getValue(
+                token = self._get_value(
                     element,
                     [
                         "continuationItemRenderer",
@@ -170,140 +158,130 @@ class RelatedVideosCore(RequestCore, ComponentHandler):
                         "token",
                     ],
                 )
+                self.continuationKey = str(token) if token else None
 
             if len(self.resultComponents) >= self.limit:
                 break
 
-    def _getCompactVideoComponent(self, element: dict) -> dict:
+    def _get_compact_video_component(self, element: Dict[str, Any]) -> Dict[str, Any]:
         video = element["compactVideoRenderer"]
-        vid = self._getValue(video, ["videoId"])
-        component = {
+        vid: Optional[str] = self._get_value(video, ["videoId"])
+        cid: Optional[str] = self._get_value(
+            video,
+            [
+                "shortBylineText",
+                "runs",
+                0,
+                "navigationEndpoint",
+                "browseEndpoint",
+                "browseId",
+            ],
+        )
+        component: Dict[str, Any] = {
             "type": "video",
             "id": vid,
-            "title": self._getValue(video, ["title", "simpleText"]),
-            "publishedTime": self._getValue(video, ["publishedTimeText", "simpleText"]),
-            "duration": self._getValue(video, ["lengthText", "simpleText"]),
+            "title": self._get_value(video, ["title", "simpleText"]),
+            "publishedTime": self._get_value(video, ["publishedTimeText", "simpleText"]),
+            "duration": self._get_value(video, ["lengthText", "simpleText"]),
             "viewCount": {
-                "text": self._getValue(video, ["viewCountText", "simpleText"]),
-                "short": self._getValue(video, ["shortViewCountText", "simpleText"]),
+                "text": self._get_value(video, ["viewCountText", "simpleText"]),
+                "short": self._get_value(video, ["shortViewCountText", "simpleText"]),
             },
-            "thumbnails": self._getValue(video, ["thumbnail", "thumbnails"]),
+            "thumbnails": self._get_value(video, ["thumbnail", "thumbnails"]),
             "channel": {
-                "name": self._getValue(video, ["shortBylineText", "runs", 0, "text"]),
-                "id": self._getValue(
-                    video,
-                    [
-                        "shortBylineText",
-                        "runs",
-                        0,
-                        "navigationEndpoint",
-                        "browseEndpoint",
-                        "browseId",
-                    ],
-                ),
+                "name": self._get_value(video, ["shortBylineText", "runs", 0, "text"]),
+                "id": cid,
+                "link": build_channel_url(cid),
             },
             "accessibility": {
-                "title": self._getValue(
+                "title": self._get_value(
                     video, ["title", "accessibility", "accessibilityData", "label"]
                 ),
-                "duration": self._getValue(
+                "duration": self._get_value(
                     video, ["lengthText", "accessibility", "accessibilityData", "label"]
                 ),
             },
+            "link": build_watch_url(vid),
         }
-        component["link"] = "https://www.youtube.com/watch?v=" + vid if vid else None
-        cid = component["channel"]["id"]
-        if cid:
-            component["channel"]["link"] = "https://www.youtube.com/channel/" + cid
-        else:
-            component["channel"]["link"] = None
         return component
 
-    def _getVideoWithContextComponent(self, element: dict) -> dict:
+    def _get_video_with_context_component(self, element: Dict[str, Any]) -> Dict[str, Any]:
         video = element["videoWithContextRenderer"]
-        vid = self._getValue(video, ["videoId"])
-        component = {
+        vid: Optional[str] = self._get_value(video, ["videoId"])
+        cid: Optional[str] = self._get_value(
+            video,
+            [
+                "shortBylineText",
+                "runs",
+                0,
+                "navigationEndpoint",
+                "browseEndpoint",
+                "browseId",
+            ],
+        )
+        component: Dict[str, Any] = {
             "type": "video",
             "id": vid,
-            "title": self._getValue(video, ["headline", "runs", 0, "text"]),
-            "publishedTime": self._getValue(
+            "title": self._get_value(video, ["headline", "runs", 0, "text"]),
+            "publishedTime": self._get_value(
                 video, ["publishedTimeText", "runs", 0, "text"]
             ),
-            "duration": self._getValue(video, ["lengthText", "runs", 0, "text"]),
+            "duration": self._get_value(video, ["lengthText", "runs", 0, "text"]),
             "viewCount": {
-                "text": self._getValue(
+                "text": self._get_value(
                     video, ["shortViewCountText", "runs", 0, "text"]
                 ),
-                "short": self._getValue(
+                "short": self._get_value(
                     video, ["shortViewCountText", "runs", 0, "text"]
                 ),
             },
-            "thumbnails": self._getValue(video, ["thumbnail", "thumbnails"]),
+            "thumbnails": self._get_value(video, ["thumbnail", "thumbnails"]),
             "channel": {
-                "name": self._getValue(video, ["shortBylineText", "runs", 0, "text"]),
-                "id": self._getValue(
-                    video,
-                    [
-                        "shortBylineText",
-                        "runs",
-                        0,
-                        "navigationEndpoint",
-                        "browseEndpoint",
-                        "browseId",
-                    ],
-                ),
+                "name": self._get_value(video, ["shortBylineText", "runs", 0, "text"]),
+                "id": cid,
+                "link": build_channel_url(cid),
             },
             "accessibility": {
-                "title": self._getValue(
+                "title": self._get_value(
                     video, ["headline", "accessibility", "accessibilityData", "label"]
                 ),
-                "duration": self._getValue(
+                "duration": self._get_value(
                     video, ["lengthText", "accessibility", "accessibilityData", "label"]
                 ),
             },
+            "link": build_watch_url(vid),
         }
-        component["link"] = "https://www.youtube.com/watch?v=" + vid if vid else None
-        cid = component["channel"]["id"]
-        if cid:
-            component["channel"]["link"] = "https://www.youtube.com/channel/" + cid
-        else:
-            component["channel"]["link"] = None
         return component
 
-    def _getCompactPlaylistComponent(self, element: dict) -> dict:
+    def _get_compact_playlist_component(self, element: Dict[str, Any]) -> Dict[str, Any]:
         playlist = element["compactPlaylistRenderer"]
-        pid = self._getValue(playlist, ["playlistId"])
-        component = {
+        pid: Optional[str] = self._get_value(playlist, ["playlistId"])
+        cid: Optional[str] = self._get_value(
+            playlist,
+            [
+                "shortBylineText",
+                "runs",
+                0,
+                "navigationEndpoint",
+                "browseEndpoint",
+                "browseId",
+            ],
+        )
+        component: Dict[str, Any] = {
             "type": "playlist",
             "id": pid,
-            "title": self._getValue(playlist, ["title", "simpleText"]),
-            "videoCount": self._getValue(
+            "title": self._get_value(playlist, ["title", "simpleText"]),
+            "videoCount": self._get_value(
                 playlist, ["videoCountShortText", "simpleText"]
             ),
-            "thumbnails": self._getValue(playlist, ["thumbnail", "thumbnails"]),
+            "thumbnails": self._get_value(playlist, ["thumbnail", "thumbnails"]),
             "channel": {
-                "name": self._getValue(
+                "name": self._get_value(
                     playlist, ["shortBylineText", "runs", 0, "text"]
                 ),
-                "id": self._getValue(
-                    playlist,
-                    [
-                        "shortBylineText",
-                        "runs",
-                        0,
-                        "navigationEndpoint",
-                        "browseEndpoint",
-                        "browseId",
-                    ],
-                ),
+                "id": cid,
+                "link": build_channel_url(cid),
             },
+            "link": build_playlist_url(pid),
         }
-        component["link"] = (
-            "https://www.youtube.com/playlist?list=" + pid if pid else None
-        )
-        cid = component["channel"]["id"]
-        if cid:
-            component["channel"]["link"] = "https://www.youtube.com/channel/" + cid
-        else:
-            component["channel"]["link"] = None
         return component

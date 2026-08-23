@@ -1,14 +1,14 @@
 import json
 import logging
-from typing import Any, Optional
+from typing import Any, Optional, Sequence, Union
 
 from py_yt.core.constants import (
     contentPath,
-    itemSectionKey,
+    continuationContentPath,
     continuationItemKey,
     continuationKeyPath,
     fallbackContentPath,
-    continuationContentPath,
+    itemSectionKey,
 )
 from py_yt.handlers.componenthandler import ComponentHandler
 
@@ -16,42 +16,42 @@ logger = logging.getLogger(__name__)
 
 
 class RequestHandler(ComponentHandler):
-    response: Optional[str] = None
+    response: Optional[Any] = None
     continuationKey: Optional[str] = None
     responseSource: Optional[Any] = None
 
-    def _parseSource(self) -> None:
+    def _parse_source(self) -> None:
         try:
             resp = self.response or ""
-            parsed_data = json.loads(resp) if resp else {}
-            c_path = list(contentPath)  # type: ignore[arg-type]
-            cont_path = list(continuationContentPath)  # type: ignore[arg-type]
-            key_path = list(continuationKeyPath)  # type: ignore[arg-type]
-            fb_path = list(fallbackContentPath)  # type: ignore[arg-type]
+            parsed_data = json.loads(resp) if isinstance(resp, str) else (resp or {})
+            c_path: Sequence[Union[str, int, None]] = contentPath  # type: ignore[assignment]
+            cont_path: Sequence[Union[str, int, None]] = continuationContentPath  # type: ignore[assignment]
+            key_path: Sequence[Union[str, int, None]] = continuationKeyPath  # type: ignore[assignment]
+            fb_path: Sequence[Union[str, int, None]] = fallbackContentPath  # type: ignore[assignment]
 
             if not self.continuationKey:
-                responseContent = self._getValue(parsed_data, c_path)  # type: ignore[arg-type]
+                response_content = self._get_value(parsed_data, c_path)
             else:
-                responseContent = self._getValue(parsed_data, cont_path)  # type: ignore[arg-type]
+                response_content = self._get_value(parsed_data, cont_path)
 
-            if responseContent and isinstance(responseContent, list):
-                for element in responseContent:
+            if response_content and isinstance(response_content, list):
+                for element in response_content:
                     if isinstance(element, dict):
                         if itemSectionKey in element:
-                            self.responseSource = self._getValue(
+                            self.responseSource = self._get_value(
                                 element, [itemSectionKey, "contents"]
                             )
                         if continuationItemKey in element:
-                            self.continuationKey = self._getValue(
+                            self.continuationKey = self._get_value(
                                 element,
-                                key_path,  # type: ignore[arg-type]
+                                key_path,
                             )
             else:
-                self.responseSource = self._getValue(parsed_data, fb_path)  # type: ignore[arg-type]
+                self.responseSource = self._get_value(parsed_data, fb_path)
                 if self.responseSource and isinstance(self.responseSource, list):
-                    self.continuationKey = self._getValue(
+                    self.continuationKey = self._get_value(
                         self.responseSource[-1],
-                        key_path,  # type: ignore[arg-type]
+                        key_path,
                     )
                 else:
                     self.continuationKey = None

@@ -1,84 +1,66 @@
-import copy
-from typing import Any, Dict, List, Optional, Union
-from urllib.parse import urlencode
+from typing import Any, Dict, List, Optional
 
-from py_yt.core.constants import (
-    requestPayload,
-    searchKey,
-)
 from py_yt.core.requests import RequestCore
 from py_yt.handlers.componenthandler import ComponentHandler
-from py_yt.core.componenthandler import getValue
 
 
 class BrowseCore(RequestCore, ComponentHandler):
+    response: Optional[str] = None
+    responseSource: Optional[Dict[str, Any]] = None
+
     def __init__(
         self,
         browse_id: str,
         limit: int = 20,
         language: str = "en",
         region: str = "US",
-        timeout: int = 20,
+        timeout: float = 20.0,
         max_retries: int = 0,
-        proxy: str | None = None,
-    ):
+        proxy: Optional[str] = None,
+    ) -> None:
         super().__init__(timeout=timeout, max_retries=max_retries, proxy=proxy)
-        self.browseId = browse_id
-        self.limit = limit
-        self.language = language
-        self.region = region
+        self.browseId: str = browse_id
+        self.limit: int = limit
+        self.language: str = language
+        self.region: str = region
         self.continuationKey: Optional[str] = None
         self.resultComponents: List[Dict[str, Any]] = []
 
-    def _getRequestBody(self):
-        requestBody = copy.deepcopy(requestPayload)
-
-        requestBody["context"]["client"]["clientName"] = "MWEB"
-        requestBody["context"]["client"]["clientVersion"] = "2.20260821.00.00"
-        requestBody["browseId"] = self.browseId
-        requestBody["context"]["client"]["hl"] = self.language
-        requestBody["context"]["client"]["gl"] = self.region
-        if self.continuationKey:
-            requestBody["continuation"] = self.continuationKey
-
-        self.url = (
-            "https://www.youtube.com/youtubei/v1/browse"
-            + "?"
-            + urlencode(
-                {
-                    "key": searchKey,
-                }
-            )
+    def _get_request_body(self) -> None:
+        self.url = self._build_url("browse")
+        self.data = self._build_payload(
+            language=self.language,
+            region=self.region,
+            client_name="MWEB",
+            client_version="2.20260821.00.00",
+            browseId=self.browseId,
+            continuation=self.continuationKey,
         )
-        self.data = requestBody
 
-    async def _makeRequest(self) -> None:
-        self._getRequestBody()
-        response = await self.postRequest()
+    async def _make_request(self) -> None:
+        self._get_request_body()
+        response = await self.post_request()
         if response:
             self.response = await response.text()
             self.responseSource = await response.json()
         else:
             raise Exception("ERROR: Could not make request.")
 
-    def _getValue(self, source: Any, path: List[Union[str, int, None]]) -> Any:
-        return getValue(source, path)
-
-    async def next(self) -> dict:
+    async def next(self) -> Dict[str, Any]:
         self.resultComponents = []
-        await self._makeRequest()
-        self._parseSource()
+        await self._make_request()
+        self._parse_source()
         return {
             "result": self.resultComponents,
         }
 
-    def _parseSource(self) -> None:
+    def _parse_source(self) -> None:
         if not self.responseSource or not isinstance(self.responseSource, dict):
             return
 
-        contents = []
+        contents: List[Any] = []
         if "contents" in self.responseSource:
-            tab_contents = self._getValue(
+            tab_contents = self._get_value(
                 self.responseSource,
                 [
                     "contents",
@@ -90,7 +72,7 @@ class BrowseCore(RequestCore, ComponentHandler):
                 ],
             )
             if not tab_contents:
-                tab_contents = self._getValue(
+                tab_contents = self._get_value(
                     self.responseSource,
                     [
                         "contents",
@@ -109,15 +91,15 @@ class BrowseCore(RequestCore, ComponentHandler):
                 contents = tab_contents
             elif isinstance(tab_contents, dict):
                 if "richGridRenderer" in tab_contents:
-                    contents = self._getValue(
+                    contents = self._get_value(
                         tab_contents, ["richGridRenderer", "contents"]
-                    )
+                    ) or []
                 elif "sectionListRenderer" in tab_contents:
-                    contents = self._getValue(
+                    contents = self._get_value(
                         tab_contents, ["sectionListRenderer", "contents"]
-                    )
+                    ) or []
         elif "onResponseReceivedActions" in self.responseSource:
-            contents = self._getValue(
+            contents = self._get_value(
                 self.responseSource,
                 [
                     "onResponseReceivedActions",
@@ -125,7 +107,7 @@ class BrowseCore(RequestCore, ComponentHandler):
                     "appendContinuationItemsAction",
                     "continuationItems",
                 ],
-            )
+            ) or []
 
         if not contents or not isinstance(contents, list):
             return
@@ -137,17 +119,17 @@ class BrowseCore(RequestCore, ComponentHandler):
                 content = element["richItemRenderer"].get("content", {})
                 if isinstance(content, dict):
                     if "videoRenderer" in content:
-                        self.resultComponents.append(self._getVideoComponent(content))
+                        self.resultComponents.append(self._get_video_component(content))
                     elif "playlistRenderer" in content:
                         self.resultComponents.append(
-                            self._getPlaylistComponent(content)
+                            self._get_playlist_component(content)
                         )
             elif "videoRenderer" in element:
-                self.resultComponents.append(self._getVideoComponent(element))
+                self.resultComponents.append(self._get_video_component(element))
             elif "playlistRenderer" in element:
-                self.resultComponents.append(self._getPlaylistComponent(element))
+                self.resultComponents.append(self._get_playlist_component(element))
             elif "richSectionRenderer" in element:
-                nested_contents = self._getValue(
+                nested_contents = self._get_value(
                     element,
                     [
                         "richSectionRenderer",
@@ -167,10 +149,10 @@ class BrowseCore(RequestCore, ComponentHandler):
                                 and "videoRenderer" in nested_content
                             ):
                                 self.resultComponents.append(
-                                    self._getVideoComponent(nested_content)
+                                    self._get_video_component(nested_content)
                                 )
             elif "continuationItemRenderer" in element:
-                token = self._getValue(
+                token = self._get_value(
                     element,
                     [
                         "continuationItemRenderer",

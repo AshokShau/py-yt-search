@@ -3,7 +3,7 @@ from typing import Any, Dict, List, Optional, Union
 
 from py_yt.core.browse import BrowseCore
 from py_yt.core.channel import ChannelCore
-from py_yt.core.constants import ResultMode, ChannelRequestType
+from py_yt.core.constants import ChannelRequestType, ResultMode
 from py_yt.core.hashtag import HashtagCore
 from py_yt.core.playlist import PlaylistCore
 from py_yt.core.recommendations import RelatedVideosCore
@@ -17,10 +17,10 @@ class Video:
     async def get(
         video_link: str,
         result_mode: int = ResultMode.dict,
-        timeout: int = 2,
+        timeout: float = 2.0,
         get_upload_date: bool = False,
-        proxy: str | None = None,
-    ) -> Union[dict, None]:
+        proxy: Optional[str] = None,
+    ) -> Optional[Union[Dict[str, Any], str]]:
         video = VideoCore(
             video_link, "", result_mode, timeout, get_upload_date, proxy=proxy
         )
@@ -30,12 +30,12 @@ class Video:
         return video.result
 
     @staticmethod
-    async def getInfo(
+    async def get_info(
         video_link: str,
         result_mode: int = ResultMode.dict,
-        timeout: int = 2,
-        proxy: str | None = None,
-    ) -> Union[dict, None]:
+        timeout: float = 2.0,
+        proxy: Optional[str] = None,
+    ) -> Optional[Union[Dict[str, Any], str]]:
         video = VideoCore(
             video_link, "getInfo", result_mode, timeout, True, proxy=proxy
         )
@@ -44,12 +44,12 @@ class Video:
         return video.result
 
     @staticmethod
-    async def getFormats(
+    async def get_formats(
         video_link: str,
         result_mode: int = ResultMode.dict,
-        timeout: int = 2,
-        proxy: str | None = None,
-    ) -> Union[dict, None]:
+        timeout: float = 2.0,
+        proxy: Optional[str] = None,
+    ) -> Optional[Union[Dict[str, Any], str]]:
         video = VideoCore(
             video_link, "getFormats", result_mode, timeout, False, proxy=proxy
         )
@@ -64,66 +64,70 @@ class Suggestions:
         language: str = "en",
         region: str = "US",
         mode: int = ResultMode.dict,
-        proxy: str | None = None,
-    ):
-        suggestionsInternal = SuggestionsCore(
+        proxy: Optional[str] = None,
+    ) -> Union[Dict[str, List[str]], str]:
+        suggestions_internal = SuggestionsCore(
             language=language, region=region, proxy=proxy
         )
-        suggestions = await suggestionsInternal._get(query, mode)
-        return suggestions
+        return await suggestions_internal._get(query, mode)
 
 
 class Playlist:
     playlistLink: str
-    videos: List[Dict[str, Any]] = []
-    info: Any = None
-    hasMoreVideos: bool = True
-    __playlist: Any = None
+    proxy: Optional[str]
+    videos: List[Dict[str, Any]]
+    info: Any
+    hasMoreVideos: bool
+    _playlist_core: Optional[PlaylistCore]
 
-    def __init__(self, playlistLink: str, proxy: str | None = None):
-        self.playlistLink = playlistLink
+    def __init__(self, playlist_link: str, proxy: Optional[str] = None) -> None:
+        self.playlistLink = playlist_link
         self.proxy = proxy
+        self.videos = []
+        self.info = None
+        self.hasMoreVideos = True
+        self._playlist_core = None
 
-    async def getNextVideos(self) -> None:
+    async def get_next_videos(self) -> None:
         if not self.info:
-            self.__playlist = PlaylistCore(
-                self.playlistLink, "", ResultMode.dict, 2, proxy=self.proxy
+            self._playlist_core = PlaylistCore(
+                self.playlistLink, "", ResultMode.dict, 2.0, proxy=self.proxy
             )
-            await self.__playlist._next()
-            self.info = copy.deepcopy(self.__playlist.playlistComponent)
-            self.videos = self.__playlist.playlistComponent.get("videos", [])
-            self.hasMoreVideos = self.__playlist.continuationKey is not None
+            await self._playlist_core._next()
+            self.info = copy.deepcopy(self._playlist_core.playlistComponent)
+            self.videos = self._playlist_core.playlistComponent.get("videos", [])
+            self.hasMoreVideos = self._playlist_core.continuationKey is not None
             if isinstance(self.info, dict):
                 self.info.pop("videos", None)
-        else:
-            await self.__playlist._next()
-            self.videos = self.__playlist.playlistComponent.get("videos", [])
-            self.hasMoreVideos = self.__playlist.continuationKey is not None
+        elif self._playlist_core:
+            await self._playlist_core._next()
+            self.videos = self._playlist_core.playlistComponent.get("videos", [])
+            self.hasMoreVideos = self._playlist_core.continuationKey is not None
 
     @staticmethod
     async def get(
-        playlistLink: str, proxy: str | None = None
-    ) -> Union[dict, str, None]:
-        playlist = PlaylistCore(playlistLink, "", ResultMode.dict, 2, proxy=proxy)
+        playlist_link: str, proxy: Optional[str] = None
+    ) -> Union[Dict[str, Any], str, None]:
+        playlist = PlaylistCore(playlist_link, "", ResultMode.dict, 2.0, proxy=proxy)
         await playlist.create()
         return playlist.playlistComponent
 
     @staticmethod
-    async def getInfo(
-        playlistLink: str, proxy: str | None = None
-    ) -> Union[dict, str, None]:
+    async def get_info(
+        playlist_link: str, proxy: Optional[str] = None
+    ) -> Union[Dict[str, Any], str, None]:
         playlist = PlaylistCore(
-            playlistLink, "getInfo", ResultMode.dict, 2, proxy=proxy
+            playlist_link, "getInfo", ResultMode.dict, 2.0, proxy=proxy
         )
         await playlist.create()
         return playlist.playlistComponent
 
     @staticmethod
-    async def getVideos(
-        playlistLink: str, proxy: str | None = None
-    ) -> Union[dict, str, None]:
+    async def get_videos(
+        playlist_link: str, proxy: Optional[str] = None
+    ) -> Union[Dict[str, Any], str, None]:
         playlist = PlaylistCore(
-            playlistLink, "getVideos", ResultMode.dict, 2, proxy=proxy
+            playlist_link, "getVideos", ResultMode.dict, 2.0, proxy=proxy
         )
         await playlist.create()
         return playlist.playlistComponent
@@ -136,15 +140,15 @@ class Hashtag(HashtagCore):
         limit: int = 60,
         language: str = "en",
         region: str = "US",
-        timeout: Optional[int] = None,
-        proxy: str | None = None,
-    ):
+        timeout: Optional[float] = None,
+        proxy: Optional[str] = None,
+    ) -> None:
         super().__init__(
             hashtag,
             limit,
             language,
             region,
-            timeout if timeout is not None else 7,
+            timeout if timeout is not None else 7.0,
             proxy=proxy,
         )
 
@@ -155,9 +159,9 @@ class Hashtag(HashtagCore):
 class Transcript:
     @staticmethod
     async def get(
-        videoLink: str, params: Optional[str] = None, proxy: str | None = None
-    ):
-        transcript_core = TranscriptCore(videoLink, params, proxy=proxy)
+        video_link: str, params: Optional[str] = None, proxy: Optional[str] = None
+    ) -> Dict[str, Any]:
+        transcript_core = TranscriptCore(video_link, params, proxy=proxy)
         await transcript_core.create()
         return transcript_core.result
 
@@ -167,22 +171,22 @@ class Channel(ChannelCore):
         self,
         channel_id: str,
         request_type: str = ChannelRequestType.playlists,
-        proxy: str | None = None,
-    ):
+        proxy: Optional[str] = None,
+    ) -> None:
         super().__init__(channel_id, request_type, proxy=proxy)
 
-    async def init(self):
+    async def init(self) -> None:
         await self.create()
 
-    async def next(self):
+    async def next(self) -> None:
         await super().next()
 
     @staticmethod
     async def get(
         channel_id: str,
         request_type: str = ChannelRequestType.playlists,
-        proxy: str | None = None,
-    ):
+        proxy: Optional[str] = None,
+    ) -> Dict[str, Any]:
         channel_core = ChannelCore(channel_id, request_type, proxy=proxy)
         await channel_core.create()
         return channel_core.result
@@ -190,13 +194,13 @@ class Channel(ChannelCore):
 
 class Recommendations:
     @staticmethod
-    async def getHome(
+    async def get_home(
         limit: int = 20,
         language: str = "en",
         region: str = "US",
-        timeout: int = 20,
-        proxy: str | None = None,
-    ) -> dict:
+        timeout: float = 20.0,
+        proxy: Optional[str] = None,
+    ) -> Dict[str, Any]:
         browse = BrowseCore(
             browse_id="FEwhat_to_watch",
             limit=limit,
@@ -208,14 +212,14 @@ class Recommendations:
         return await browse.next()
 
     @staticmethod
-    async def getRelated(
+    async def get_related(
         video_link: str,
         limit: int = 20,
         language: str = "en",
         region: str = "US",
-        timeout: int = 20,
-        proxy: str | None = None,
-    ) -> dict:
+        timeout: float = 20.0,
+        proxy: Optional[str] = None,
+    ) -> Dict[str, Any]:
         related = RelatedVideosCore(
             video_link=video_link,
             limit=limit,

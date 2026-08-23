@@ -1,20 +1,22 @@
-import os
-import logging
-import json
 import asyncio
+import copy
 import inspect
+import json
+import logging
+import os
+from typing import Any, Callable, Dict, Mapping, Optional, Tuple
 from urllib.parse import urlencode
 import aiohttp
 
-from py_yt.core.constants import userAgent, CLIENT_PROFILES, searchKey
+from py_yt.core.constants import CLIENT_PROFILES, requestPayload, searchKey, userAgent
 from py_yt.core.session import (
     get_session,
-    get_session_visitor_data,
-    set_session_visitor_data,
     get_session_po_token,
-    set_session_po_token,
     get_session_po_token_verifier,
+    get_session_visitor_data,
     get_token_lock,
+    set_session_po_token,
+    set_session_visitor_data,
 )
 
 logger = logging.getLogger(__name__)
@@ -27,28 +29,61 @@ class RequestCore:
         self,
         timeout: float = 7.0,
         max_retries: int = 2,
-        proxy: str | None = None,
-        visitor_data: str | None = None,
-        po_token: str | None = None,
-        po_token_verifier=None,
-    ):
-        self.url: str | None = None
-        self.data: dict | None = None
+        proxy: Optional[str] = None,
+        visitor_data: Optional[str] = None,
+        po_token: Optional[str] = None,
+        po_token_verifier: Optional[Callable[..., Any]] = None,
+    ) -> None:
+        self.url: Optional[str] = None
+        self.data: Optional[Dict[str, Any]] = None
         self.timeout: float = timeout
         self.max_retries: int = max_retries
-        self.proxy_url: str | None = proxy or os.environ.get("PROXY_URL")
-        self.visitor_data: str | None = visitor_data
-        self.po_token: str | None = po_token
-        self.po_token_verifier = po_token_verifier
+        self.proxy_url: Optional[str] = proxy or os.environ.get("PROXY_URL")
+        self.visitor_data: Optional[str] = visitor_data
+        self.po_token: Optional[str] = po_token
+        self.po_token_verifier: Optional[Callable[..., Any]] = po_token_verifier
 
-    async def _fetch_automatic_visitor_data(self) -> str | None:
+    @staticmethod
+    def _build_url(endpoint: str, extra_params: Optional[Dict[str, str]] = None) -> str:
+        """Helper to construct YouTube InnerTube endpoint URLs."""
+        params: Dict[str, str] = {"key": searchKey}
+        if extra_params:
+            params.update(extra_params)
+        return f"https://www.youtube.com/youtubei/v1/{endpoint}?{urlencode(params)}"
+
+    @staticmethod
+    def _build_payload(
+        language: str = "en",
+        region: str = "US",
+        client_name: str = "WEB",
+        client_version: str = "2.20260820.08.00",
+        continuation: Optional[str] = None,
+        params: Optional[str] = None,
+        **extra_fields: Any,
+    ) -> Dict[str, Any]:
+        """Helper to build standardized InnerTube request payloads."""
+        payload: Dict[str, Any] = copy.deepcopy(requestPayload)
+        client_dict = payload["context"]["client"]
+        client_dict["hl"] = language
+        client_dict["gl"] = region
+        client_dict["clientName"] = client_name
+        client_dict["clientVersion"] = client_version
+
+        if params:
+            payload["params"] = params
+        if continuation:
+            payload["continuation"] = continuation
+
+        for key, val in extra_fields.items():
+            if val is not None:
+                payload[key] = val
+
+        return payload
+
+    async def _fetch_automatic_visitor_data(self) -> Optional[str]:
         try:
             session = await get_session()
-            url = (
-                "https://www.youtube.com/youtubei/v1/visitor_id"
-                + "?"
-                + urlencode({"key": searchKey})
-            )
+            url = self._build_url("visitor_id")
             payload = {
                 "context": {
                     "client": {
@@ -72,7 +107,7 @@ class RequestCore:
             logger.debug(f"Automatic visitor_id fetch failed: {e}")
         return None
 
-    async def _resolve_tokens(self) -> tuple[str | None, str | None]:
+    async def _resolve_tokens(self) -> Tuple[Optional[str], Optional[str]]:
         visitor_data = self.visitor_data or get_session_visitor_data()
         po_token = self.po_token or get_session_po_token()
         verifier = self.po_token_verifier or get_session_po_token_verifier()
@@ -139,9 +174,9 @@ class RequestCore:
                 set_session_po_token(po_token)
             return visitor_data, po_token
 
-    def _prepare_request_for_profile(self, profile_name: str) -> dict[str, str]:
+    def _prepare_request_for_profile(self, profile_name: str) -> Dict[str, str]:
         profile = CLIENT_PROFILES.get(profile_name, CLIENT_PROFILES["WEB"])
-        headers = {
+        headers: Dict[str, str] = {
             "User-Agent": profile.get("userAgent", userAgent),
             "Origin": "https://www.youtube.com",
             "Referer": "https://www.youtube.com/",
@@ -189,7 +224,7 @@ class RequestCore:
 
         return headers
 
-    def _get_headers(self) -> dict[str, str]:
+    def _get_headers(self) -> Dict[str, str]:
         if isinstance(self.data, dict):
             client_name = (
                 self.data.get("context", {}).get("client", {}).get("clientName", "WEB")
@@ -198,30 +233,34 @@ class RequestCore:
         return self._prepare_request_for_profile("WEB")
 
     def _extract_visitor_data_from_response(
-        self, response_bytes: bytes, response_headers=None
-    ):
+        self,
+        response_bytes: bytes,
+        response_headers: Optional[Mapping[str, str]] = None,
+    ) -> None:
         try:
             if response_headers and "X-Goog-Visitor-Id" in response_headers:
-                vd = response_headers["X-Goog-Visitor-Id"]
-                if vd:
-                    self.visitor_data = vd
-                    set_session_visitor_data(vd)
+                vd_hdr = response_headers["X-Goog-Visitor-Id"]
+                if vd_hdr:
+                    self.visitor_data = vd_hdr
+                    set_session_visitor_data(vd_hdr)
                     return
             data = json.loads(response_bytes.decode("utf-8", errors="ignore"))
-            vd = None
+            vd: Optional[str] = None
             if isinstance(data, dict):
-                vd = (
+                extracted_vd = (
                     data.get("responseContext", {}).get("visitorData")
                     or data.get("responseHeader", {}).get("visitorData")
                     or data.get("visitorData")
                 )
-            if vd and isinstance(vd, str):
+                if isinstance(extracted_vd, str):
+                    vd = extracted_vd
+            if vd:
                 self.visitor_data = vd
                 set_session_visitor_data(vd)
         except Exception:
             pass
 
-    async def postRequest(self) -> aiohttp.ClientResponse | None:
+    async def post_request(self) -> Optional[aiohttp.ClientResponse]:
         """Sends an asynchronous POST request."""
         if not self.url:
             raise ValueError("URL must be set before making a request.")
@@ -277,7 +316,7 @@ class RequestCore:
                 await asyncio.sleep(2**i)
         return None
 
-    async def getRequest(self) -> aiohttp.ClientResponse | None:
+    async def get_request(self) -> Optional[aiohttp.ClientResponse]:
         """Sends an asynchronous GET request."""
         if not self.url:
             raise ValueError("URL must be set before making a request.")

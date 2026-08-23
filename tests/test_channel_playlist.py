@@ -24,7 +24,7 @@ def test_channel_search_request_body():
         browse_id="UC123456",
         timeout=10,
     )
-    cs._getRequestBody()
+    cs._get_request_body()
     assert cs.url is not None
     assert cs.data["browseId"] == "UC123456"
     assert cs.data["query"] == "python"
@@ -41,7 +41,7 @@ async def test_channel_search_empty_response():
         timeout=10,
     )
     cs.response = {}
-    cs._parseChannelSearchSource()
+    cs._parse_channel_search_source()
     assert cs.response == []
 
 
@@ -71,7 +71,7 @@ def test_playlist_prepare_first_request_mix():
 @pytest.mark.asyncio
 async def test_hashtag_params_fetch_failure():
     ht = HashtagCore("python", limit=10, language="en", region="US", timeout=5)
-    with patch.object(ht, "postRequest", new_callable=AsyncMock) as mock_post:
+    with patch.object(ht, "post_request", new_callable=AsyncMock) as mock_post:
         mock_post.return_value = None
         with pytest.raises(Exception, match="Could not make request"):
-            await ht._getParams()
+            await ht._get_params()

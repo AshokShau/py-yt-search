@@ -31,7 +31,7 @@ def test_search_core_video_id_query_extraction():
         searchPreferences="test",
         timeout=10,
     )
-    search._getRequestBody()
+    search._get_request_body()
     assert search.data["query"] == "dQw4w9WgXcQ"
     # When query is a direct video link, params should not be set
     assert "params" not in search.data
@@ -46,5 +46,5 @@ def test_search_core_special_characters_query():
         searchPreferences="",
         timeout=10,
     )
-    search._getRequestBody()
+    search._get_request_body()
     assert search.data["query"] == "Python 3.12 & Asyncio 🚀 #coding"

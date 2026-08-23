@@ -1,11 +1,12 @@
-import aiohttp
 import asyncio
+from typing import Any, Callable, Optional, Union
+import aiohttp
 
-_session = None
-_visitor_data: str | None = None
-_po_token: str | None = None
-_po_token_verifier = None
-_token_lock: asyncio.Lock | None = None
+_session: Optional[aiohttp.ClientSession] = None
+_visitor_data: Optional[str] = None
+_po_token: Optional[str] = None
+_po_token_verifier: Optional[Callable[..., Any]] = None
+_token_lock: Optional[asyncio.Lock] = None
 
 
 def get_token_lock() -> asyncio.Lock:
@@ -17,37 +18,37 @@ def get_token_lock() -> asyncio.Lock:
     return _token_lock
 
 
-def set_session_visitor_data(visitor_data: str | None) -> None:
+def set_session_visitor_data(visitor_data: Optional[str]) -> None:
     """Sets the persistent visitorData for session requests."""
     global _visitor_data
     _visitor_data = visitor_data
 
 
-def get_session_visitor_data() -> str | None:
+def get_session_visitor_data() -> Optional[str]:
     """Gets the persistent visitorData."""
     global _visitor_data
     return _visitor_data
 
 
-def set_session_po_token(po_token: str | None) -> None:
+def set_session_po_token(po_token: Optional[str]) -> None:
     """Sets the persistent poToken for session requests."""
     global _po_token
     _po_token = po_token
 
 
-def get_session_po_token() -> str | None:
+def get_session_po_token() -> Optional[str]:
     """Gets the persistent poToken."""
     global _po_token
     return _po_token
 
 
-def set_session_po_token_verifier(verifier) -> None:
+def set_session_po_token_verifier(verifier: Optional[Callable[..., Any]]) -> None:
     """Sets a global callable or function to retrieve poToken / visitorData dynamically."""
     global _po_token_verifier
     _po_token_verifier = verifier
 
 
-def get_session_po_token_verifier():
+def get_session_po_token_verifier() -> Optional[Callable[..., Any]]:
     """Gets the registered po_token_verifier."""
     global _po_token_verifier
     return _po_token_verifier
@@ -67,7 +68,7 @@ async def get_session() -> aiohttp.ClientSession:
     return _session
 
 
-async def close_session():
+async def close_session() -> None:
     """Closes the shared aiohttp.ClientSession."""
     global _session
     if _session is not None and not _session.closed:

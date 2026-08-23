@@ -1,35 +1,51 @@
 import logging
-from typing import Any, Dict, List, Optional, Union
-from py_yt.core.componenthandler import getValue
+from typing import Any, Dict, List, Optional, Sequence, Union
 
+from py_yt.core.componenthandler import (
+    build_channel_url,
+    build_playlist_url,
+    build_watch_url,
+    get_value,
+)
 from py_yt.core.constants import (
-    videoElementKey,
     channelElementKey,
     playlistElementKey,
     shelfElementKey,
+    videoElementKey,
 )
 
 logger = logging.getLogger(__name__)
 
 
 class ComponentHandler:
-    def _getVideoComponent(
-        self, element: dict, shelfTitle: Optional[str] = None
-    ) -> dict:
+    def _get_video_component(
+        self, element: Dict[str, Any], shelf_title: Optional[str] = None
+    ) -> Dict[str, Any]:
         video = element[videoElementKey]
-        vid = self._getValue(video, ["videoId"])
-        component = {
+        vid: Optional[str] = self._get_value(video, ["videoId"])
+        cid: Optional[str] = self._get_value(
+            video,
+            [
+                "ownerText",
+                "runs",
+                0,
+                "navigationEndpoint",
+                "browseEndpoint",
+                "browseId",
+            ],
+        )
+        component: Dict[str, Any] = {
             "type": "video",
             "id": vid,
-            "title": self._getValue(video, ["title", "runs", 0, "text"]),
-            "publishedTime": self._getValue(video, ["publishedTimeText", "simpleText"]),
-            "duration": self._getValue(video, ["lengthText", "simpleText"]),
+            "title": self._get_value(video, ["title", "runs", 0, "text"]),
+            "publishedTime": self._get_value(video, ["publishedTimeText", "simpleText"]),
+            "duration": self._get_value(video, ["lengthText", "simpleText"]),
             "viewCount": {
-                "text": self._getValue(video, ["viewCountText", "simpleText"]),
-                "short": self._getValue(video, ["shortViewCountText", "simpleText"]),
+                "text": self._get_value(video, ["viewCountText", "simpleText"]),
+                "short": self._get_value(video, ["shortViewCountText", "simpleText"]),
             },
-            "thumbnails": self._getValue(video, ["thumbnail", "thumbnails"]),
-            "richThumbnail": self._getValue(
+            "thumbnails": self._get_value(video, ["thumbnail", "thumbnails"]),
+            "richThumbnail": self._get_value(
                 video,
                 [
                     "richThumbnail",
@@ -39,23 +55,13 @@ class ComponentHandler:
                     0,
                 ],
             ),
-            "descriptionSnippet": self._getValue(
+            "descriptionSnippet": self._get_value(
                 video, ["detailedMetadataSnippets", 0, "snippetText", "runs"]
             ),
             "channel": {
-                "name": self._getValue(video, ["ownerText", "runs", 0, "text"]),
-                "id": self._getValue(
-                    video,
-                    [
-                        "ownerText",
-                        "runs",
-                        0,
-                        "navigationEndpoint",
-                        "browseEndpoint",
-                        "browseId",
-                    ],
-                ),
-                "thumbnails": self._getValue(
+                "name": self._get_value(video, ["ownerText", "runs", 0, "text"]),
+                "id": cid,
+                "thumbnails": self._get_value(
                     video,
                     [
                         "channelThumbnailSupportedRenderers",
@@ -64,59 +70,55 @@ class ComponentHandler:
                         "thumbnails",
                     ],
                 ),
+                "link": build_channel_url(cid),
             },
             "accessibility": {
-                "title": self._getValue(
+                "title": self._get_value(
                     video, ["title", "accessibility", "accessibilityData", "label"]
                 ),
-                "duration": self._getValue(
+                "duration": self._get_value(
                     video, ["lengthText", "accessibility", "accessibilityData", "label"]
                 ),
             },
+            "link": build_watch_url(vid),
+            "shelfTitle": shelf_title,
         }
-        component["link"] = "https://www.youtube.com/watch?v=" + vid if vid else None
-        cid = component["channel"]["id"]
-        if cid:
-            component["channel"]["link"] = "https://www.youtube.com/channel/" + cid
-        else:
-            component["channel"]["link"] = None
-        component["shelfTitle"] = shelfTitle
         return component
 
-    def _getChannelComponent(self, element: dict) -> dict:
+    def _get_channel_component(self, element: Dict[str, Any]) -> Dict[str, Any]:
         channel = element[channelElementKey]
-        cid = self._getValue(channel, ["channelId"])
-        component = {
+        cid: Optional[str] = self._get_value(channel, ["channelId"])
+        component: Dict[str, Any] = {
             "type": "channel",
             "id": cid,
-            "title": self._getValue(channel, ["title", "simpleText"]),
-            "thumbnails": self._getValue(channel, ["thumbnail", "thumbnails"]),
-            "videoCount": self._getValue(
+            "title": self._get_value(channel, ["title", "simpleText"]),
+            "thumbnails": self._get_value(channel, ["thumbnail", "thumbnails"]),
+            "videoCount": self._get_value(
                 channel, ["videoCountText", "runs", 0, "text"]
             ),
-            "descriptionSnippet": self._getValue(
+            "descriptionSnippet": self._get_value(
                 channel, ["descriptionSnippet", "runs"]
             ),
-            "subscribers": self._getValue(
+            "subscribers": self._get_value(
                 channel, ["subscriberCountText", "simpleText"]
             ),
+            "link": build_channel_url(cid),
         }
-        component["link"] = "https://www.youtube.com/channel/" + cid if cid else None
         return component
 
-    def _getPlaylistComponent(self, element: dict) -> dict:
+    def _get_playlist_component(self, element: Dict[str, Any]) -> Dict[str, Any]:
         if playlistElementKey in element:
             playlist = element[playlistElementKey]
-            component = {
+            component: Dict[str, Any] = {
                 "type": "playlist",
-                "id": self._getValue(playlist, ["playlistId"]),
-                "title": self._getValue(playlist, ["title", "simpleText"]),
-                "videoCount": self._getValue(playlist, ["videoCount"]),
+                "id": self._get_value(playlist, ["playlistId"]),
+                "title": self._get_value(playlist, ["title", "simpleText"]),
+                "videoCount": self._get_value(playlist, ["videoCount"]),
                 "channel": {
-                    "name": self._getValue(
+                    "name": self._get_value(
                         playlist, ["shortBylineText", "runs", 0, "text"]
                     ),
-                    "id": self._getValue(
+                    "id": self._get_value(
                         playlist,
                         [
                             "shortBylineText",
@@ -128,7 +130,7 @@ class ComponentHandler:
                         ],
                     ),
                 },
-                "thumbnails": self._getValue(
+                "thumbnails": self._get_value(
                     playlist,
                     [
                         "thumbnailRenderer",
@@ -142,12 +144,12 @@ class ComponentHandler:
             lockup = element["lockupViewModel"]
             component = {
                 "type": "playlist",
-                "id": self._getValue(lockup, ["contentId"]),
-                "title": self._getValue(
+                "id": self._get_value(lockup, ["contentId"]),
+                "title": self._get_value(
                     lockup,
                     ["metadata", "lockupMetadataViewModel", "title", "content"],
                 ),
-                "thumbnails": self._getValue(
+                "thumbnails": self._get_value(
                     lockup,
                     [
                         "contentImage",
@@ -158,7 +160,7 @@ class ComponentHandler:
                         "sources",
                     ],
                 ),
-                "videoCount": self._getValue(
+                "videoCount": self._get_value(
                     lockup,
                     [
                         "contentImage",
@@ -175,7 +177,7 @@ class ComponentHandler:
                     ],
                 ),
                 "channel": {
-                    "name": self._getValue(
+                    "name": self._get_value(
                         lockup,
                         [
                             "metadata",
@@ -190,7 +192,7 @@ class ComponentHandler:
                             "content",
                         ],
                     ),
-                    "id": self._getValue(
+                    "id": self._get_value(
                         lockup,
                         [
                             "metadata",
@@ -214,22 +216,19 @@ class ComponentHandler:
             }
         else:
             raise ValueError(
-                "Unrecognized element format encountered in _getPlaylistComponent; "
+                "Unrecognized element format encountered in _get_playlist_component; "
                 f"element keys: {list(element.keys())}"
             )
 
-        pid = component["id"]
-        component["link"] = (
-            "https://www.youtube.com/playlist?list=" + pid if pid else None
-        )
-        cid = component["channel"]["id"]
-        if cid:
-            component["channel"]["link"] = "https://www.youtube.com/channel/" + cid
-        else:
-            component["channel"]["link"] = None
+        pid: Optional[str] = component["id"]
+        cid: Optional[str] = component["channel"]["id"]
+        component["link"] = build_playlist_url(pid)
+        component["channel"]["link"] = build_channel_url(cid)
         return component
 
-    def _getVideoFromChannelSearch(self, elements: Optional[list]) -> list:
+    def _get_video_from_channel_search(
+        self, elements: Optional[List[Any]]
+    ) -> List[Dict[str, Any]]:
         channelsearch: List[Dict[str, Any]] = []
         if not elements or not isinstance(elements, list):
             return channelsearch
@@ -237,13 +236,13 @@ class ComponentHandler:
         for element in elements:
             if not isinstance(element, dict):
                 continue
-            child = self._getValue(element, ["childVideoRenderer"])
+            child = self._get_value(element, ["childVideoRenderer"])
             if not child:
                 continue
             json_data = {
-                "id": self._getValue(child, ["videoId"]),
-                "title": self._getValue(child, ["title", "simpleText"]),
-                "uri": self._getValue(
+                "id": self._get_value(child, ["videoId"]),
+                "title": self._get_value(child, ["title", "simpleText"]),
+                "uri": self._get_value(
                     child,
                     [
                         "navigationEndpoint",
@@ -253,8 +252,8 @@ class ComponentHandler:
                     ],
                 ),
                 "duration": {
-                    "simpleText": self._getValue(child, ["lengthText", "simpleText"]),
-                    "text": self._getValue(
+                    "simpleText": self._get_value(child, ["lengthText", "simpleText"]),
+                    "text": self._get_value(
                         child,
                         ["lengthText", "accessibility", "accessibilityData", "label"],
                     ),
@@ -263,7 +262,9 @@ class ComponentHandler:
             channelsearch.append(json_data)
         return channelsearch
 
-    def _getChannelSearchComponent(self, elements: list) -> list:
+    def _get_channel_search_component(
+        self, elements: List[Any]
+    ) -> List[Dict[str, Any]]:
         channelsearch: List[Dict[str, Any]] = []
         if not elements or not isinstance(elements, list):
             return channelsearch
@@ -305,10 +306,10 @@ class ComponentHandler:
             json_data: Dict[str, Any]
             if responsetype == "video":
                 json_data = {
-                    "id": self._getValue(element, ["videoId"]),
+                    "id": self._get_value(element, ["videoId"]),
                     "thumbnails": {
-                        "normal": self._getValue(element, ["thumbnail", "thumbnails"]),
-                        "rich": self._getValue(
+                        "normal": self._get_value(element, ["thumbnail", "thumbnails"]),
+                        "rich": self._get_value(
                             element,
                             [
                                 "richThumbnail",
@@ -318,11 +319,11 @@ class ComponentHandler:
                             ],
                         ),
                     },
-                    "title": self._getValue(element, ["title", "runs", 0, "text"]),
-                    "descriptionSnippet": self._getValue(
+                    "title": self._get_value(element, ["title", "runs", 0, "text"]),
+                    "descriptionSnippet": self._get_value(
                         element, ["descriptionSnippet", "runs", 0, "text"]
                     ),
-                    "uri": self._getValue(
+                    "uri": self._get_value(
                         element,
                         [
                             "navigationEndpoint",
@@ -332,13 +333,13 @@ class ComponentHandler:
                         ],
                     ),
                     "views": {
-                        "precise": self._getValue(
+                        "precise": self._get_value(
                             element, ["viewCountText", "simpleText"]
                         ),
-                        "simple": self._getValue(
+                        "simple": self._get_value(
                             element, ["shortViewCountText", "simpleText"]
                         ),
-                        "approximate": self._getValue(
+                        "approximate": self._get_value(
                             element,
                             [
                                 "shortViewCountText",
@@ -349,10 +350,10 @@ class ComponentHandler:
                         ),
                     },
                     "duration": {
-                        "simpleText": self._getValue(
+                        "simpleText": self._get_value(
                             element, ["lengthText", "simpleText"]
                         ),
-                        "text": self._getValue(
+                        "text": self._get_value(
                             element,
                             [
                                 "lengthText",
@@ -362,14 +363,14 @@ class ComponentHandler:
                             ],
                         ),
                     },
-                    "published": self._getValue(
+                    "published": self._get_value(
                         element, ["publishedTimeText", "simpleText"]
                     ),
                     "channel": {
-                        "name": self._getValue(
+                        "name": self._get_value(
                             element, ["ownerText", "runs", 0, "text"]
                         ),
-                        "thumbnails": self._getValue(
+                        "thumbnails": self._get_value(
                             element,
                             [
                                 "channelThumbnailSupportedRenderers",
@@ -383,15 +384,15 @@ class ComponentHandler:
                 }
             elif responsetype == "playlist":
                 json_data = {
-                    "id": self._getValue(element, ["playlistId"]),
-                    "videos": self._getVideoFromChannelSearch(
-                        self._getValue(element, ["videos"])
+                    "id": self._get_value(element, ["playlistId"]),
+                    "videos": self._get_video_from_channel_search(
+                        self._get_value(element, ["videos"])
                     ),
                     "thumbnails": {
-                        "normal": self._getValue(element, ["thumbnails"]),
+                        "normal": self._get_value(element, ["thumbnails"]),
                     },
-                    "title": self._getValue(element, ["title", "simpleText"]),
-                    "uri": self._getValue(
+                    "title": self._get_value(element, ["title", "simpleText"]),
+                    "uri": self._get_value(
                         element,
                         [
                             "navigationEndpoint",
@@ -401,7 +402,7 @@ class ComponentHandler:
                         ],
                     ),
                     "channel": {
-                        "name": self._getValue(
+                        "name": self._get_value(
                             element, ["longBylineText", "runs", 0, "text"]
                         ),
                     },
@@ -409,14 +410,14 @@ class ComponentHandler:
                 }
             else:
                 json_data = {
-                    "id": self._getValue(element, ["playlistId"]),
+                    "id": self._get_value(element, ["playlistId"]),
                     "thumbnails": {
-                        "normal": self._getValue(
+                        "normal": self._get_value(
                             element, ["thumbnail", "thumbnails", 0]
                         ),
                     },
-                    "title": self._getValue(element, ["title", "runs", 0, "text"]),
-                    "uri": self._getValue(
+                    "title": self._get_value(element, ["title", "runs", 0, "text"]),
+                    "uri": self._get_value(
                         element,
                         [
                             "navigationEndpoint",
@@ -430,15 +431,15 @@ class ComponentHandler:
             channelsearch.append(json_data)
         return channelsearch
 
-    def _getShelfComponent(self, element: dict) -> dict:
+    def _get_shelf_component(self, element: Dict[str, Any]) -> Dict[str, Any]:
         shelf = element.get(shelfElementKey, {})
         return {
-            "title": self._getValue(shelf, ["title", "simpleText"]),
-            "elements": self._getValue(
+            "title": self._get_value(shelf, ["title", "simpleText"]),
+            "elements": self._get_value(
                 shelf, ["content", "verticalListRenderer", "items"]
             )
             or [],
         }
 
-    def _getValue(self, source: Any, path: List[Union[str, int, None]]) -> Any:
-        return getValue(source, path)
+    def _get_value(self, source: Any, path: Sequence[Union[str, int, None]]) -> Any:
+        return get_value(source, path)

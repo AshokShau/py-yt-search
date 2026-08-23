@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional
+from typing import Any, Callable, Dict, Optional
 
 from py_yt.core.channelsearch import ChannelSearchCore
 from py_yt.core.constants import SearchMode
@@ -14,14 +14,14 @@ class Search(SearchCore):
         limit: int = 20,
         language: str = "en",
         region: str = "US",
-        timeout: Optional[int] = None,
+        timeout: Optional[float] = None,
         with_live: bool = True,
         max_retries: int = 2,
-        proxy: str | None = None,
-        visitor_data: str | None = None,
-        po_token: str | None = None,
-        po_token_verifier=None,
-    ):
+        proxy: Optional[str] = None,
+        visitor_data: Optional[str] = None,
+        po_token: Optional[str] = None,
+        po_token_verifier: Optional[Callable[..., Any]] = None,
+    ) -> None:
         self.searchMode = (True, True, True)
         super().__init__(
             query,
@@ -29,7 +29,7 @@ class Search(SearchCore):
             language,
             region,
             "",
-            timeout if timeout is not None else 7,
+            timeout if timeout is not None else 7.0,
             with_live=with_live,
             max_retries=max_retries,
             proxy=proxy,
@@ -51,14 +51,14 @@ class VideosSearch(SearchCore):
         limit: int = 20,
         language: str = "en",
         region: str = "US",
-        timeout: Optional[int] = None,
+        timeout: Optional[float] = None,
         with_live: bool = True,
         max_retries: int = 2,
-        proxy: str | None = None,
-        visitor_data: str | None = None,
-        po_token: str | None = None,
-        po_token_verifier=None,
-    ):
+        proxy: Optional[str] = None,
+        visitor_data: Optional[str] = None,
+        po_token: Optional[str] = None,
+        po_token_verifier: Optional[Callable[..., Any]] = None,
+    ) -> None:
         self.searchMode = (True, False, False)
         super().__init__(
             query,
@@ -66,7 +66,7 @@ class VideosSearch(SearchCore):
             language,
             region,
             SearchMode.videos,
-            timeout if timeout is not None else 7,
+            timeout if timeout is not None else 7.0,
             with_live=with_live,
             max_retries=max_retries,
             proxy=proxy,
@@ -88,13 +88,13 @@ class ChannelsSearch(SearchCore):
         limit: int = 20,
         language: str = "en",
         region: str = "US",
-        timeout: Optional[int] = None,
+        timeout: Optional[float] = None,
         max_retries: int = 2,
-        proxy: str | None = None,
-        visitor_data: str | None = None,
-        po_token: str | None = None,
-        po_token_verifier=None,
-    ):
+        proxy: Optional[str] = None,
+        visitor_data: Optional[str] = None,
+        po_token: Optional[str] = None,
+        po_token_verifier: Optional[Callable[..., Any]] = None,
+    ) -> None:
         self.searchMode = (False, True, False)
         super().__init__(
             query,
@@ -102,7 +102,7 @@ class ChannelsSearch(SearchCore):
             language,
             region,
             SearchMode.channels,
-            timeout if timeout is not None else 7,
+            timeout if timeout is not None else 7.0,
             max_retries=max_retries,
             proxy=proxy,
             visitor_data=visitor_data,
@@ -123,13 +123,13 @@ class PlaylistsSearch(SearchCore):
         limit: int = 20,
         language: str = "en",
         region: str = "US",
-        timeout: Optional[int] = None,
+        timeout: Optional[float] = None,
         max_retries: int = 2,
-        proxy: str | None = None,
-        visitor_data: str | None = None,
-        po_token: str | None = None,
-        po_token_verifier=None,
-    ):
+        proxy: Optional[str] = None,
+        visitor_data: Optional[str] = None,
+        po_token: Optional[str] = None,
+        po_token_verifier: Optional[Callable[..., Any]] = None,
+    ) -> None:
         self.searchMode = (False, False, True)
         super().__init__(
             query,
@@ -137,7 +137,7 @@ class PlaylistsSearch(SearchCore):
             language,
             region,
             SearchMode.playlists,
-            timeout if timeout is not None else 7,
+            timeout if timeout is not None else 7.0,
             max_retries=max_retries,
             proxy=proxy,
             visitor_data=visitor_data,
@@ -159,14 +159,14 @@ class CustomSearch(SearchCore):
         limit: int = 20,
         language: str = "en",
         region: str = "US",
-        timeout: Optional[int] = None,
+        timeout: Optional[float] = None,
         with_live: bool = True,
         max_retries: int = 2,
-        proxy: str | None = None,
-        visitor_data: str | None = None,
-        po_token: str | None = None,
-        po_token_verifier=None,
-    ):
+        proxy: Optional[str] = None,
+        visitor_data: Optional[str] = None,
+        po_token: Optional[str] = None,
+        po_token_verifier: Optional[Callable[..., Any]] = None,
+    ) -> None:
         self.searchMode = (True, True, True)
         super().__init__(
             query,
@@ -174,7 +174,7 @@ class CustomSearch(SearchCore):
             language,
             region,
             search_preferences,
-            timeout if timeout is not None else 7,
+            timeout if timeout is not None else 7.0,
             with_live=with_live,
             max_retries=max_retries,
             proxy=proxy,
@@ -197,20 +197,20 @@ class ChannelSearch(ChannelSearchCore):
         language: str = "en",
         region: str = "US",
         search_preferences: str = "EgZzZWFyY2g%3D",
-        timeout: Optional[int] = None,
+        timeout: Optional[float] = None,
         max_retries: int = 2,
-        proxy: str | None = None,
-        visitor_data: str | None = None,
-        po_token: str | None = None,
-        po_token_verifier=None,
-    ):
+        proxy: Optional[str] = None,
+        visitor_data: Optional[str] = None,
+        po_token: Optional[str] = None,
+        po_token_verifier: Optional[Callable[..., Any]] = None,
+    ) -> None:
         super().__init__(
             query,
             language,
             region,
             search_preferences,
             browse_id,
-            timeout if timeout is not None else 7,
+            timeout if timeout is not None else 7.0,
             max_retries=max_retries,
             proxy=proxy,
             visitor_data=visitor_data,

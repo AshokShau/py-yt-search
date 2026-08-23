@@ -1,10 +1,8 @@
-import copy
 import json
 import logging
-from typing import Any, Dict, List, Union
-from urllib.parse import urlencode
+from typing import Any, Callable, Dict, List, Optional, Union
 
-from py_yt.core.constants import requestPayload, searchKey, ResultMode
+from py_yt.core.constants import ResultMode
 from py_yt.core.requests import RequestCore
 from py_yt.handlers.componenthandler import ComponentHandler
 
@@ -12,8 +10,8 @@ logger = logging.getLogger(__name__)
 
 
 class ChannelSearchCore(RequestCore, ComponentHandler):
-    response = None
-    responseSource = None
+    response: Optional[Union[List[Any], Dict[str, Any]]] = None
+    responseSource: Optional[Any] = None
     resultComponents: List[Dict[str, Any]] = []
 
     def __init__(
@@ -23,13 +21,13 @@ class ChannelSearchCore(RequestCore, ComponentHandler):
         region: str,
         search_preferences: str,
         browse_id: str,
-        timeout: int,
+        timeout: float,
         max_retries: int = 2,
-        proxy: str | None = None,
-        visitor_data: str | None = None,
-        po_token: str | None = None,
-        po_token_verifier=None,
-    ):
+        proxy: Optional[str] = None,
+        visitor_data: Optional[str] = None,
+        po_token: Optional[str] = None,
+        po_token_verifier: Optional[Callable[..., Any]] = None,
+    ) -> None:
         super().__init__(
             timeout=timeout,
             max_retries=max_retries,
@@ -38,25 +36,25 @@ class ChannelSearchCore(RequestCore, ComponentHandler):
             po_token=po_token,
             po_token_verifier=po_token_verifier,
         )
-        self.query = query
-        self.language = language
-        self.region = region
-        self.browseId = browse_id
-        self.searchPreferences = search_preferences
-        self.continuationKey = None
-        self.timeout = timeout
+        self.query: str = query
+        self.language: str = language
+        self.region: str = region
+        self.browseId: str = browse_id
+        self.searchPreferences: str = search_preferences
+        self.continuationKey: Optional[str] = None
+        self.timeout: float = timeout
 
-    async def next(self) -> dict:
-        await self._makeRequest()
-        self._parseChannelSearchSource()
+    async def next(self) -> Dict[str, Any]:
+        await self._make_request()
+        self._parse_channel_search_source()
         raw_elements: List[Any] = (
             self.response if isinstance(self.response, list) else []
         )
-        components = self._getChannelSearchComponent(raw_elements)
+        components = self._get_channel_search_component(raw_elements)
         self.response = components
         return {"result": components}
 
-    def _parseChannelSearchSource(self) -> None:
+    def _parse_channel_search_source(self) -> None:
         try:
             if not isinstance(self.response, dict):
                 self.response = []
@@ -96,28 +94,20 @@ class ChannelSearchCore(RequestCore, ComponentHandler):
             )
             raise Exception("ERROR: Could not parse YouTube response.") from e
 
-    def _getRequestBody(self):
-        requestBody = copy.deepcopy(requestPayload)
-        requestBody["query"] = self.query
-        requestBody["context"]["client"]["hl"] = self.language
-        requestBody["context"]["client"]["gl"] = self.region
-        requestBody["params"] = self.searchPreferences
-        requestBody["browseId"] = self.browseId
-        self.url = (
-            "https://www.youtube.com/youtubei/v1/browse"
-            + "?"
-            + urlencode(
-                {
-                    "key": searchKey,
-                }
-            )
+    def _get_request_body(self) -> None:
+        self.url = self._build_url("browse")
+        self.data = self._build_payload(
+            language=self.language,
+            region=self.region,
+            query=self.query,
+            params=self.searchPreferences,
+            browseId=self.browseId,
         )
-        self.data = requestBody
 
-    async def _makeRequest(self) -> None:
-        self._getRequestBody()
+    async def _make_request(self) -> None:
+        self._get_request_body()
 
-        request = await self.postRequest()
+        request = await self.post_request()
         if request is None:
             raise Exception("ERROR: Could not make request.")
 
@@ -129,13 +119,8 @@ class ChannelSearchCore(RequestCore, ComponentHandler):
             )
             raise Exception("ERROR: Could not make request.") from e
 
-    def result(self, mode: int = ResultMode.dict) -> Union[str, dict]:
-        """Returns the search result.
-        Args:
-            mode (int, optional): Sets the type of result. Defaults to ResultMode.dict.
-        Returns:
-            Union[str, dict]: Returns JSON or dictionary.
-        """
+    def result(self, mode: int = ResultMode.dict) -> Union[str, Dict[str, Any]]:
+        """Returns the search result."""
         if mode == ResultMode.json:
             return json.dumps({"result": self.response}, indent=4)
-        return {"result": self.response}
+        return {"result": self.response or {}}

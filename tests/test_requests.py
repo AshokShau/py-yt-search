@@ -47,7 +47,7 @@ def test_search_core_request_body():
         searchPreferences="",
         timeout=10,
     )
-    search._getRequestBody()
+    search._get_request_body()
     assert "client" not in search.data  # Ensure no top-level client key
     assert search.data["context"]["client"]["hl"] == "en"
     assert search.data["context"]["client"]["gl"] == "US"
@@ -63,7 +63,7 @@ def test_channel_search_core_request_body():
         browse_id="UC123456",
         timeout=10,
     )
-    cs._getRequestBody()
+    cs._get_request_body()
     assert "client" not in cs.data  # Ensure no top-level client key
     assert cs.data["context"]["client"]["hl"] == "en"
     assert cs.data["context"]["client"]["gl"] == "US"
