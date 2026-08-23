@@ -44,6 +44,11 @@ dependencies = [
     "aiohttp>=3.14.0,<4.0",
 ]
 
+[project.optional-dependencies]
+potoken = [
+    "nodejs-wheel-binaries",
+]
+
 [project.urls]
 Homepage = "https://github.com/AshokShau/py-yt"
 Download = "https://github.com/AshokShau/py-yt-search/releases/latest"

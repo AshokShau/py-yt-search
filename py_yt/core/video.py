@@ -10,13 +10,13 @@ from py_yt.core.requests import RequestCore
 CLIENTS = {
     "MWEB": {
         "context": {
-            "client": {"clientName": "WEB", "clientVersion": "2.20251021.01.00"}
+            "client": {"clientName": "WEB", "clientVersion": "2.20260820.08.00"}
         },
         "api_key": "AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8",
     },
     "ANDROID": {
         "context": {
-            "client": {"clientName": "WEB", "clientVersion": "2.20251021.01.00"}
+            "client": {"clientName": "WEB", "clientVersion": "2.20260820.08.00"}
         },
         "api_key": "AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8",
     },
@@ -24,7 +24,7 @@ CLIENTS = {
         "context": {
             "client": {
                 "clientName": "WEB",
-                "clientVersion": "2.20251021.01.00",
+                "clientVersion": "2.20260820.08.00",
                 "clientScreen": "EMBED",
             }
         },

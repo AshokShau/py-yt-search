@@ -80,8 +80,11 @@ class Search(SearchCore):
         region: str = "US",
         timeout: Optional[int] = None,
         with_live: bool = True,
-        max_retries: int = 0,
+        max_retries: int = 2,
         proxy: str | None = None,
+        visitor_data: str | None = None,
+        po_token: str | None = None,
+        po_token_verifier=None,
     ):
         self.searchMode = (True, True, True)
         super().__init__(
@@ -94,6 +97,9 @@ class Search(SearchCore):
             with_live=with_live,
             max_retries=max_retries,
             proxy=proxy,
+            visitor_data=visitor_data,
+            po_token=po_token,
+            po_token_verifier=po_token_verifier,
         )  # type: ignore
 
     async def next(self) -> Dict[str, Any]:
@@ -111,8 +117,11 @@ class VideosSearch(SearchCore):
         region: str = "US",
         timeout: Optional[int] = None,
         with_live: bool = True,
-        max_retries: int = 0,
+        max_retries: int = 2,
         proxy: str | None = None,
+        visitor_data: str | None = None,
+        po_token: str | None = None,
+        po_token_verifier=None,
     ):
         self.searchMode = (True, False, False)
         super().__init__(
@@ -125,6 +134,9 @@ class VideosSearch(SearchCore):
             with_live=with_live,
             max_retries=max_retries,
             proxy=proxy,
+            visitor_data=visitor_data,
+            po_token=po_token,
+            po_token_verifier=po_token_verifier,
         )
 
     async def next(self) -> Dict[str, Any]:
@@ -141,8 +153,11 @@ class ChannelsSearch(SearchCore):
         language: str = "en",
         region: str = "US",
         timeout: Optional[int] = None,
-        max_retries: int = 0,
+        max_retries: int = 2,
         proxy: str | None = None,
+        visitor_data: str | None = None,
+        po_token: str | None = None,
+        po_token_verifier=None,
     ):
         self.searchMode = (False, True, False)
         super().__init__(
@@ -154,6 +169,9 @@ class ChannelsSearch(SearchCore):
             timeout,
             max_retries=max_retries,
             proxy=proxy,
+            visitor_data=visitor_data,
+            po_token=po_token,
+            po_token_verifier=po_token_verifier,
         )  # type: ignore
 
     async def next(self) -> Dict[str, Any]:
@@ -170,8 +188,11 @@ class PlaylistsSearch(SearchCore):
         language: str = "en",
         region: str = "US",
         timeout: Optional[int] = None,
-        max_retries: int = 0,
+        max_retries: int = 2,
         proxy: str | None = None,
+        visitor_data: str | None = None,
+        po_token: str | None = None,
+        po_token_verifier=None,
     ):
         self.searchMode = (False, False, True)
         super().__init__(
@@ -183,6 +204,9 @@ class PlaylistsSearch(SearchCore):
             timeout,
             max_retries=max_retries,
             proxy=proxy,
+            visitor_data=visitor_data,
+            po_token=po_token,
+            po_token_verifier=po_token_verifier,
         )  # type: ignore
 
     async def next(self) -> Dict[str, Any]:
@@ -201,8 +225,11 @@ class CustomSearch(SearchCore):
         region: str = "US",
         timeout: Optional[int] = None,
         with_live: bool = True,
-        max_retries: int = 0,
+        max_retries: int = 2,
         proxy: str | None = None,
+        visitor_data: str | None = None,
+        po_token: str | None = None,
+        po_token_verifier=None,
     ):
         self.searchMode = (True, True, True)
         super().__init__(
@@ -215,6 +242,9 @@ class CustomSearch(SearchCore):
             with_live=with_live,
             max_retries=max_retries,
             proxy=proxy,
+            visitor_data=visitor_data,
+            po_token=po_token,
+            po_token_verifier=po_token_verifier,
         )
 
     async def next(self) -> Dict[str, Any]:
@@ -232,8 +262,11 @@ class ChannelSearch(ChannelSearchCore):
         region: str = "US",
         search_preferences: str = "EgZzZWFyY2g%3D",
         timeout: Optional[int] = None,
-        max_retries: int = 0,
+        max_retries: int = 2,
         proxy: str | None = None,
+        visitor_data: str | None = None,
+        po_token: str | None = None,
+        po_token_verifier=None,
     ):
         super().__init__(
             query,
@@ -244,7 +277,11 @@ class ChannelSearch(ChannelSearchCore):
             timeout,
             max_retries=max_retries,
             proxy=proxy,
+            visitor_data=visitor_data,
+            po_token=po_token,
+            po_token_verifier=po_token_verifier,
         )  # type: ignore
 
     async def next(self):
         return await super().next()
+    

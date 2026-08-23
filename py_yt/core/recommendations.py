@@ -13,14 +13,14 @@ from py_yt.handlers.componenthandler import ComponentHandler
 
 class RelatedVideosCore(RequestCore, ComponentHandler):
     def __init__(
-        self,
-        video_link: str,
-        limit: int = 20,
-        language: str = "en",
-        region: str = "US",
-        timeout: int = 20,
-        max_retries: int = 0,
-        proxy: str | None = None,
+            self,
+            video_link: str,
+            limit: int = 20,
+            language: str = "en",
+            region: str = "US",
+            timeout: int = 20,
+            max_retries: int = 0,
+            proxy: str | None = None,
     ):
         super().__init__(timeout=timeout, max_retries=max_retries, proxy=proxy)
         self.video_link = video_link
@@ -33,21 +33,21 @@ class RelatedVideosCore(RequestCore, ComponentHandler):
     def _getRequestBody(self):
         requestBody = copy.deepcopy(requestPayload)
         requestBody["context"]["client"]["clientName"] = "MWEB"
-        requestBody["context"]["client"]["clientVersion"] = "2.20251021.01.00"
+        requestBody["context"]["client"]["clientVersion"] = "2.20260821.00.00"
         requestBody["videoId"] = getVideoId(self.video_link)
         requestBody["context"]["client"]["hl"] = self.language
         requestBody["context"]["client"]["gl"] = self.region
         if self.continuationKey:
             requestBody["continuation"] = self.continuationKey
-        
+
         self.url = (
-            "https://www.youtube.com/youtubei/v1/next"
-            + "?"
-            + urlencode(
-                {
-                    "key": searchKey,
-                }
-            )
+                "https://www.youtube.com/youtubei/v1/next"
+                + "?"
+                + urlencode(
+            {
+                "key": searchKey,
+            }
+        )
         )
         self.data = requestBody
 
@@ -73,15 +73,21 @@ class RelatedVideosCore(RequestCore, ComponentHandler):
     def _parseSource(self) -> None:
         if not self.responseSource:
             return
-        
+
         contents = []
         if not self.continuationKey:
-            secondary_results = self._getValue(self.responseSource, ["contents", "twoColumnWatchNextResults", "secondaryResults", "secondaryResults", "results"])
+            secondary_results = self._getValue(self.responseSource,
+                                               ["contents", "twoColumnWatchNextResults", "secondaryResults",
+                                                "secondaryResults", "results"])
             if not secondary_results:
-                 secondary_results = self._getValue(self.responseSource, ["contents", "singleColumnWatchNextResults", "pivot", "pivotRenderer", "contents"])
-            
+                secondary_results = self._getValue(self.responseSource,
+                                                   ["contents", "singleColumnWatchNextResults", "pivot",
+                                                    "pivotRenderer", "contents"])
+
             if not secondary_results:
-                secondary_results = self._getValue(self.responseSource, ["contents", "singleColumnWatchNextResults", "results", "results", "contents"])
+                secondary_results = self._getValue(self.responseSource,
+                                                   ["contents", "singleColumnWatchNextResults", "results", "results",
+                                                    "contents"])
 
             if secondary_results:
                 contents = secondary_results
@@ -107,13 +113,14 @@ class RelatedVideosCore(RequestCore, ComponentHandler):
                 if nested_contents:
                     for nested in nested_contents:
                         if len(self.resultComponents) >= self.limit:
-                             break
+                            break
                         if "compactVideoRenderer" in nested:
                             self.resultComponents.append(self._getCompactVideoComponent(nested))
                         elif "videoWithContextRenderer" in nested:
                             self.resultComponents.append(self._getVideoWithContextComponent(nested))
             elif "continuationItemRenderer" in element:
-                self.continuationKey = self._getValue(element, ["continuationItemRenderer", "continuationEndpoint", "continuationCommand", "token"])
+                self.continuationKey = self._getValue(element, ["continuationItemRenderer", "continuationEndpoint",
+                                                                "continuationCommand", "token"])
 
             if len(self.resultComponents) >= self.limit:
                 break
@@ -133,7 +140,8 @@ class RelatedVideosCore(RequestCore, ComponentHandler):
             "thumbnails": self._getValue(video, ["thumbnail", "thumbnails"]),
             "channel": {
                 "name": self._getValue(video, ["shortBylineText", "runs", 0, "text"]),
-                "id": self._getValue(video, ["shortBylineText", "runs", 0, "navigationEndpoint", "browseEndpoint", "browseId"]),
+                "id": self._getValue(video, ["shortBylineText", "runs", 0, "navigationEndpoint", "browseEndpoint",
+                                             "browseId"]),
             },
             "accessibility": {
                 "title": self._getValue(video, ["title", "accessibility", "accessibilityData", "label"]),
@@ -160,7 +168,8 @@ class RelatedVideosCore(RequestCore, ComponentHandler):
             "thumbnails": self._getValue(video, ["thumbnail", "thumbnails"]),
             "channel": {
                 "name": self._getValue(video, ["shortBylineText", "runs", 0, "text"]),
-                "id": self._getValue(video, ["shortBylineText", "runs", 0, "navigationEndpoint", "browseEndpoint", "browseId"]),
+                "id": self._getValue(video, ["shortBylineText", "runs", 0, "navigationEndpoint", "browseEndpoint",
+                                             "browseId"]),
             },
             "accessibility": {
                 "title": self._getValue(video, ["headline", "accessibility", "accessibilityData", "label"]),
@@ -182,7 +191,8 @@ class RelatedVideosCore(RequestCore, ComponentHandler):
             "thumbnails": self._getValue(playlist, ["thumbnail", "thumbnails"]),
             "channel": {
                 "name": self._getValue(playlist, ["shortBylineText", "runs", 0, "text"]),
-                "id": self._getValue(playlist, ["shortBylineText", "runs", 0, "navigationEndpoint", "browseEndpoint", "browseId"]),
+                "id": self._getValue(playlist, ["shortBylineText", "runs", 0, "navigationEndpoint", "browseEndpoint",
+                                                "browseId"]),
             },
         }
         component["link"] = "https://www.youtube.com/playlist?list=" + component["id"]
