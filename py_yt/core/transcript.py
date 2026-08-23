@@ -1,5 +1,6 @@
 import copy
 import logging
+from typing import Any, Dict, List
 from urllib.parse import urlencode
 
 from py_yt.core.componenthandler import getVideoId, getValue
@@ -10,11 +11,13 @@ logger = logging.getLogger(__name__)
 
 
 class TranscriptCore(RequestCore):
-    def __init__(self, videoLink: str, key: str, proxy: str | None = None):
+    def __init__(
+        self, videoLink: str, key: str | None = None, proxy: str | None = None
+    ):
         super().__init__(proxy=proxy)
         self.videoLink = videoLink
-        self.key = key
-        self.result = {"segments": [], "languages": []}
+        self.key = key or ""
+        self.result: Dict[str, Any] = {"segments": [], "languages": []}
 
     def prepare_params_request(self):
         self.url = (
@@ -32,18 +35,20 @@ class TranscriptCore(RequestCore):
             self.result = {"segments": [], "languages": []}
             return True
         panels = getValue(j, ["engagementPanels"])
-        if not panels:
+        if not panels or not isinstance(panels, list):
             self.result = {"segments": [], "languages": []}
             return True
         key = ""
         for panel in panels:
-            panel = panel["engagementPanelSectionListRenderer"]
+            if not isinstance(panel, dict):
+                continue
+            section = panel.get("engagementPanelSectionListRenderer", {})
             if (
-                getValue(panel, ["targetId"])
+                getValue(section, ["targetId"])
                 == "engagement-panel-searchable-transcript"
             ):
                 key = getValue(
-                    panel,
+                    section,
                     [
                         "content",
                         "continuationItemRenderer",
@@ -52,10 +57,10 @@ class TranscriptCore(RequestCore):
                         "params",
                     ],
                 )
-        if key == "" or not key:
+        if not key:
             self.result = {"segments": [], "languages": []}
             return True
-        self.key = key
+        self.key = str(key)
         return False
 
     def prepare_transcript_request(self):
@@ -68,7 +73,7 @@ class TranscriptCore(RequestCore):
         self.data["params"] = self.key
 
     def extract_transcript(self):
-        response = self.data
+        response = self.data if isinstance(self.data, dict) else {}
         transcripts = getValue(
             response,
             [
@@ -84,18 +89,18 @@ class TranscriptCore(RequestCore):
                 "initialSegments",
             ],
         )
-        segments = []
-        languages = []
-        if transcripts:
+        segments: List[Dict[str, Any]] = []
+        languages: List[Dict[str, Any]] = []
+        if transcripts and isinstance(transcripts, list):
             for segment in transcripts:
-                segment = getValue(segment, ["transcriptSegmentRenderer"])
-                if segment:
+                seg_renderer = getValue(segment, ["transcriptSegmentRenderer"])
+                if seg_renderer and isinstance(seg_renderer, dict):
                     j = {
-                        "startMs": getValue(segment, ["startMs"]),
-                        "endMs": getValue(segment, ["endMs"]),
-                        "text": getValue(segment, ["snippet", "runs", 0, "text"]),
+                        "startMs": getValue(seg_renderer, ["startMs"]),
+                        "endMs": getValue(seg_renderer, ["endMs"]),
+                        "text": getValue(seg_renderer, ["snippet", "runs", 0, "text"]),
                         "startTime": getValue(
-                            segment, ["startTimeText", "simpleText"]
+                            seg_renderer, ["startTimeText", "simpleText"]
                         ),
                     }
                     segments.append(j)
@@ -116,17 +121,18 @@ class TranscriptCore(RequestCore):
                 "subMenuItems",
             ],
         )
-        if langs:
+        if langs and isinstance(langs, list):
             for language in langs:
-                j = {
-                    "params": getValue(
-                        language,
-                        ["continuation", "reloadContinuationData", "continuation"],
-                    ),
-                    "selected": getValue(language, ["selected"]),
-                    "title": getValue(language, ["title"]),
-                }
-                languages.append(j)
+                if isinstance(language, dict):
+                    j = {
+                        "params": getValue(
+                            language,
+                            ["continuation", "reloadContinuationData", "continuation"],
+                        ),
+                        "selected": getValue(language, ["selected"]),
+                        "title": getValue(language, ["title"]),
+                    }
+                    languages.append(j)
         self.result = {"segments": segments, "languages": languages}
 
     async def create(self):
@@ -143,7 +149,10 @@ class TranscriptCore(RequestCore):
         if response:
             try:
                 self.data = await response.json()
-            except Exception as e:
-                logger.error("Could not parse YouTube response inside extract_transcript.", exc_info=True)
+            except Exception:
+                logger.error(
+                    "Could not parse YouTube response inside extract_transcript.",
+                    exc_info=True,
+                )
                 return
             self.extract_transcript()

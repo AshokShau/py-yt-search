@@ -1,6 +1,7 @@
 import asyncio
 from py_yt import Search, VideosSearch, ChannelsSearch, PlaylistsSearch, close_session
 
+
 async def main():
     """
     Searches for all types of results like videos, channels & playlists in YouTube.
@@ -48,23 +49,24 @@ async def main():
     """ Displaying the result """
     for video in result_page1.get("result", []):
         index += 1
-        print(f'{index} - {video.get("title", "No Title")}')
-        
+        print(f"{index} - {video.get('title', 'No Title')}")
+
     """ Getting result on 2nd page """
     result_page2 = await _search_pages.next()
     """ Displaying the result """
     for video in result_page2.get("result", []):
         index += 1
-        print(f'{index} - {video.get("title", "No Title")}')
-        
+        print(f"{index} - {video.get('title', 'No Title')}")
+
     """ Getting result on 3rd page """
     result_page3 = await _search_pages.next()
     """ Displaying the result """
     for video in result_page3.get("result", []):
         index += 1
-        print(f'{index} - {video.get("title", "No Title")}')
+        print(f"{index} - {video.get('title', 'No Title')}")
 
     await close_session()
+
 
 if __name__ == "__main__":
     asyncio.run(main())

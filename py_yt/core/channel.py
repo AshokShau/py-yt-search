@@ -1,20 +1,23 @@
 import copy
+import logging
+from typing import Any, Dict, List, Optional
 from urllib.parse import urlencode
 
 from py_yt.core.componenthandler import getValue
 from py_yt.core.constants import searchKey, requestPayload
 from py_yt.core.requests import RequestCore
 
+logger = logging.getLogger(__name__)
+
 
 class ChannelCore(RequestCore):
-    def __init__(
-        self, channel_id: str, request_params: str, proxy: str | None = None
-    ):
+    def __init__(self, channel_id: str, request_params: str, proxy: str | None = None):
         super().__init__(proxy=proxy)
         self.browseId = channel_id
         self.params = request_params
-        self.result = {}
-        self.continuation = None
+        self.result: Dict[str, Any] = {}
+        self.continuation: Optional[str] = None
+        self.responseSource: Optional[Any] = None
 
     def prepare_request(self):
         self.url = (
@@ -29,7 +32,7 @@ class ChannelCore(RequestCore):
         else:
             self.data["continuation"] = self.continuation
 
-    def playlist_parse(self, i) -> dict:
+    def playlist_parse(self, i: dict) -> dict:
         return {
             "id": getValue(i, ["playlistId"]),
             "thumbnails": getValue(i, ["thumbnail", "thumbnails"]),
@@ -39,86 +42,78 @@ class ChannelCore(RequestCore):
         }
 
     async def parse_response(self):
-        response = await self.data.json()
-        self.responseSource = response
+        response = self.responseSource
+        if not isinstance(response, dict):
+            self.result = {}
+            return
 
-        thumbnails = []
-        try:
-            thumbnails.extend(
-                getValue(
-                    response,
-                    ["header", "c4TabbedHeaderRenderer", "avatar", "thumbnails"],
-                )
-            )
-        except:
-            pass
-        try:
-            thumbnails.extend(
-                getValue(
-                    response,
-                    ["metadata", "channelMetadataRenderer", "avatar", "thumbnails"],
-                )
-            )
-        except:
-            pass
-        try:
-            thumbnails.extend(
-                getValue(
-                    response,
-                    [
-                        "microformat",
-                        "microformatDataRenderer",
-                        "thumbnail",
-                        "thumbnails",
-                    ],
-                )
-            )
-        except:
-            pass
+        thumbnails: List[Any] = []
+        avatar_header = getValue(
+            response, ["header", "c4TabbedHeaderRenderer", "avatar", "thumbnails"]
+        )
+        if avatar_header and isinstance(avatar_header, list):
+            thumbnails.extend(avatar_header)
+
+        avatar_meta = getValue(
+            response, ["metadata", "channelMetadataRenderer", "avatar", "thumbnails"]
+        )
+        if avatar_meta and isinstance(avatar_meta, list):
+            thumbnails.extend(avatar_meta)
+
+        avatar_micro = getValue(
+            response,
+            ["microformat", "microformatDataRenderer", "thumbnail", "thumbnails"],
+        )
+        if avatar_micro and isinstance(avatar_micro, list):
+            thumbnails.extend(avatar_micro)
 
         tabData: dict = {}
-        playlists: list = []
+        playlists: List[dict] = []
 
-        for tab in getValue(
+        tabs = getValue(
             response, ["contents", "twoColumnBrowseResultsRenderer", "tabs"]
-        ):
-            tab: dict
-            title = getValue(tab, ["tabRenderer", "title"])
-            if title == "Playlists":
-                playlist = getValue(
-                    tab,
-                    [
-                        "tabRenderer",
-                        "content",
-                        "sectionListRenderer",
-                        "contents",
-                        0,
-                        "itemSectionRenderer",
-                        "contents",
-                        0,
-                        "gridRenderer",
-                        "items",
-                    ],
-                )
-                if playlist is not None and getValue(
-                    playlist, [0, "gridPlaylistRenderer"]
-                ):
-                    for i in playlist:
-                        if getValue(i, ["continuationItemRenderer"]):
-                            self.continuation = getValue(
-                                i,
-                                [
-                                    "continuationItemRenderer",
-                                    "continuationEndpoint",
-                                    "continuationCommand",
-                                    "token",
-                                ],
-                            )
-                            break
-                        i: dict = i["gridPlaylistRenderer"]
-                        playlists.append(self.playlist_parse(i))
-            elif title == "About":
-                tabData = tab["tabRenderer"]
+        )
+        if tabs and isinstance(tabs, list):
+            for tab in tabs:
+                if not isinstance(tab, dict):
+                    continue
+                title = getValue(tab, ["tabRenderer", "title"])
+                if title == "Playlists":
+                    playlist_items = getValue(
+                        tab,
+                        [
+                            "tabRenderer",
+                            "content",
+                            "sectionListRenderer",
+                            "contents",
+                            0,
+                            "itemSectionRenderer",
+                            "contents",
+                            0,
+                            "gridRenderer",
+                            "items",
+                        ],
+                    )
+                    if playlist_items and isinstance(playlist_items, list):
+                        for item in playlist_items:
+                            if not isinstance(item, dict):
+                                continue
+                            if getValue(item, ["continuationItemRenderer"]):
+                                self.continuation = getValue(
+                                    item,
+                                    [
+                                        "continuationItemRenderer",
+                                        "continuationEndpoint",
+                                        "continuationCommand",
+                                        "token",
+                                    ],
+                                )
+                                break
+                            pl_data = getValue(item, ["gridPlaylistRenderer"])
+                            if pl_data and isinstance(pl_data, dict):
+                                playlists.append(self.playlist_parse(pl_data))
+                elif title == "About":
+                    tabData = tab.get("tabRenderer", {})
 
         metadata = getValue(
             tabData,
@@ -222,12 +217,13 @@ class ChannelCore(RequestCore):
         }
 
     async def parse_next_response(self):
-        response = await self.data.json()
+        if not isinstance(self.responseSource, dict):
+            return
 
         self.continuation = None
 
-        response = getValue(
-            response,
+        items = getValue(
+            self.responseSource,
             [
                 "onResponseReceivedActions",
                 0,
@@ -235,7 +231,12 @@ class ChannelCore(RequestCore):
                 "continuationItems",
             ],
         )
-        for i in response:
+        if not items or not isinstance(items, list):
+            return
+
+        for i in items:
+            if not isinstance(i, dict):
+                continue
             if getValue(i, ["continuationItemRenderer"]):
                 self.continuation = getValue(
                     i,
@@ -248,16 +249,20 @@ class ChannelCore(RequestCore):
                 )
                 break
             elif getValue(i, ["gridPlaylistRenderer"]):
-                self.result["playlists"].append(
-                    self.playlist_parse(getValue(i, ["gridPlaylistRenderer"]))
-                )
-            # TODO: Handle other types like gridShowRenderer
+                grid_pl = getValue(i, ["gridPlaylistRenderer"])
+                if grid_pl and isinstance(grid_pl, dict):
+                    self.result.setdefault("playlists", []).append(
+                        self.playlist_parse(grid_pl)
+                    )
 
     async def next(self):
         if not self.continuation:
             return
         self.prepare_request()
-        self.data = await self.postRequest()
+        resp = await self.postRequest()
+        if resp is None:
+            raise Exception("ERROR: Could not make request.")
+        self.responseSource = await resp.json()
         await self.parse_next_response()
 
     def has_more_playlists(self):
@@ -265,5 +270,8 @@ class ChannelCore(RequestCore):
 
     async def create(self):
         self.prepare_request()
-        self.data = await self.postRequest()
+        resp = await self.postRequest()
+        if resp is None:
+            raise Exception("ERROR: Could not make request.")
+        self.responseSource = await resp.json()
         await self.parse_response()

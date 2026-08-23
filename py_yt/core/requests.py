@@ -103,7 +103,11 @@ class RequestCore:
                                 po_token, visitor_data = a, b
                     elif isinstance(res, dict):
                         po_token = res.get("po_token") or res.get("poToken") or po_token
-                        visitor_data = res.get("visitor_data") or res.get("visitorData") or visitor_data
+                        visitor_data = (
+                            res.get("visitor_data")
+                            or res.get("visitorData")
+                            or visitor_data
+                        )
                     elif isinstance(res, str):
                         po_token = res
                 except Exception as e:
@@ -112,8 +116,11 @@ class RequestCore:
             if not po_token:
                 try:
                     from py_yt.botGuard.bot_guard import generate_po_token
+
                     video_id = getattr(self, "video_id", None) or "dQw4w9WgXcQ"
-                    gen_pot = await asyncio.to_thread(generate_po_token, video_id=video_id)
+                    gen_pot = await asyncio.to_thread(
+                        generate_po_token, video_id=video_id
+                    )
                     if gen_pot and isinstance(gen_pot, str):
                         po_token = gen_pot
                 except Exception as e:
@@ -140,7 +147,9 @@ class RequestCore:
             "Referer": "https://www.youtube.com/",
             "Accept-Language": "en-US,en;q=0.9",
             "X-YouTube-Client-Name": profile.get("clientCode", "1"),
-            "X-YouTube-Client-Version": profile.get("clientVersion", "2.20260820.08.00"),
+            "X-YouTube-Client-Version": profile.get(
+                "clientVersion", "2.20260820.08.00"
+            ),
         }
 
         if self.visitor_data:
@@ -182,11 +191,15 @@ class RequestCore:
 
     def _get_headers(self) -> dict[str, str]:
         if isinstance(self.data, dict):
-            client_name = self.data.get("context", {}).get("client", {}).get("clientName", "WEB")
+            client_name = (
+                self.data.get("context", {}).get("client", {}).get("clientName", "WEB")
+            )
             return self._prepare_request_for_profile(client_name)
         return self._prepare_request_for_profile("WEB")
 
-    def _extract_visitor_data_from_response(self, response_bytes: bytes, response_headers=None):
+    def _extract_visitor_data_from_response(
+        self, response_bytes: bytes, response_headers=None
+    ):
         try:
             if response_headers and "X-Goog-Visitor-Id" in response_headers:
                 vd = response_headers["X-Goog-Visitor-Id"]
@@ -239,29 +252,29 @@ class RequestCore:
                         response.release()
                     raise
             except aiohttp.ClientResponseError as e:
-                is_last_retry = (i == self.max_retries)
+                is_last_retry = i == self.max_retries
                 log_fn = logger.error if is_last_retry else logger.debug
                 log_fn(
-                    f"HTTP error during POST request (attempt {i+1}/{self.max_retries+1}, profile={profile_name})",
+                    f"HTTP error during POST request (attempt {i + 1}/{self.max_retries + 1}, profile={profile_name})",
                     extra={
                         "status_code": e.status,
                         "response_text": e.message,
-                        "url": self.url
+                        "url": self.url,
                     },
                     exc_info=is_last_retry,
                 )
-            except (aiohttp.ClientError, asyncio.TimeoutError) as e:
-                is_last_retry = (i == self.max_retries)
+            except (aiohttp.ClientError, asyncio.TimeoutError):
+                is_last_retry = i == self.max_retries
                 log_fn = logger.error if is_last_retry else logger.debug
                 log_fn(
-                    f"Request error during POST request (attempt {i+1}/{self.max_retries+1}, profile={profile_name})",
+                    f"Request error during POST request (attempt {i + 1}/{self.max_retries + 1}, profile={profile_name})",
                     extra={
                         "request_url": self.url,
                     },
                     exc_info=is_last_retry,
                 )
             if i < self.max_retries:
-                await asyncio.sleep(2 ** i)
+                await asyncio.sleep(2**i)
         return None
 
     async def getRequest(self) -> aiohttp.ClientResponse | None:
@@ -297,27 +310,27 @@ class RequestCore:
                         response.release()
                     raise
             except aiohttp.ClientResponseError as e:
-                is_last_retry = (i == self.max_retries)
+                is_last_retry = i == self.max_retries
                 log_fn = logger.error if is_last_retry else logger.debug
                 log_fn(
-                    f"HTTP error during GET request (attempt {i+1}/{self.max_retries+1}, profile={profile_name})",
+                    f"HTTP error during GET request (attempt {i + 1}/{self.max_retries + 1}, profile={profile_name})",
                     extra={
                         "status_code": e.status,
                         "response_text": e.message,
-                        "url": self.url
+                        "url": self.url,
                     },
                     exc_info=is_last_retry,
                 )
-            except (aiohttp.ClientError, asyncio.TimeoutError) as e:
-                is_last_retry = (i == self.max_retries)
+            except (aiohttp.ClientError, asyncio.TimeoutError):
+                is_last_retry = i == self.max_retries
                 log_fn = logger.error if is_last_retry else logger.debug
                 log_fn(
-                    f"Request error during GET request (attempt {i+1}/{self.max_retries+1}, profile={profile_name})",
+                    f"Request error during GET request (attempt {i + 1}/{self.max_retries + 1}, profile={profile_name})",
                     extra={
                         "request_url": self.url,
                     },
                     exc_info=is_last_retry,
                 )
             if i < self.max_retries:
-                await asyncio.sleep(2 ** i)
+                await asyncio.sleep(2**i)
         return None

@@ -1,4 +1,5 @@
-from typing import List, Union
+import logging
+from typing import Any, Dict, List, Optional, Union
 from py_yt.core.componenthandler import getValue
 
 from py_yt.core.constants import (
@@ -8,13 +9,18 @@ from py_yt.core.constants import (
     shelfElementKey,
 )
 
+logger = logging.getLogger(__name__)
+
 
 class ComponentHandler:
-    def _getVideoComponent(self, element: dict, shelfTitle: str = None) -> dict:
+    def _getVideoComponent(
+        self, element: dict, shelfTitle: Optional[str] = None
+    ) -> dict:
         video = element[videoElementKey]
+        vid = self._getValue(video, ["videoId"])
         component = {
             "type": "video",
-            "id": self._getValue(video, ["videoId"]),
+            "id": vid,
             "title": self._getValue(video, ["title", "runs", 0, "text"]),
             "publishedTime": self._getValue(video, ["publishedTimeText", "simpleText"]),
             "duration": self._getValue(video, ["lengthText", "simpleText"]),
@@ -68,19 +74,21 @@ class ComponentHandler:
                 ),
             },
         }
-        component["link"] = "https://www.youtube.com/watch?v=" + component["id"]
-        if component["channel"]["id"]:
-            component["channel"]["link"] = (
-                "https://www.youtube.com/channel/" + component["channel"]["id"]
-            )
+        component["link"] = "https://www.youtube.com/watch?v=" + vid if vid else None
+        cid = component["channel"]["id"]
+        if cid:
+            component["channel"]["link"] = "https://www.youtube.com/channel/" + cid
+        else:
+            component["channel"]["link"] = None
         component["shelfTitle"] = shelfTitle
         return component
 
     def _getChannelComponent(self, element: dict) -> dict:
         channel = element[channelElementKey]
+        cid = self._getValue(channel, ["channelId"])
         component = {
             "type": "channel",
-            "id": self._getValue(channel, ["channelId"]),
+            "id": cid,
             "title": self._getValue(channel, ["title", "simpleText"]),
             "thumbnails": self._getValue(channel, ["thumbnail", "thumbnails"]),
             "videoCount": self._getValue(
@@ -93,7 +101,7 @@ class ComponentHandler:
                 channel, ["subscriberCountText", "simpleText"]
             ),
         }
-        component["link"] = "https://www.youtube.com/channel/" + component["id"]
+        component["link"] = "https://www.youtube.com/channel/" + cid if cid else None
         return component
 
     def _getPlaylistComponent(self, element: dict) -> dict:
@@ -210,22 +218,33 @@ class ComponentHandler:
                 f"element keys: {list(element.keys())}"
             )
 
-        component["link"] = "https://www.youtube.com/playlist?list=" + component["id"]
-        if component["channel"]["id"]:
-            component["channel"]["link"] = (
-                "https://www.youtube.com/channel/" + component["channel"]["id"]
-            )
+        pid = component["id"]
+        component["link"] = (
+            "https://www.youtube.com/playlist?list=" + pid if pid else None
+        )
+        cid = component["channel"]["id"]
+        if cid:
+            component["channel"]["link"] = "https://www.youtube.com/channel/" + cid
+        else:
+            component["channel"]["link"] = None
         return component
 
-    def _getVideoFromChannelSearch(self, elements: list) -> list:
-        channelsearch = []
+    def _getVideoFromChannelSearch(self, elements: Optional[list]) -> list:
+        channelsearch: List[Dict[str, Any]] = []
+        if not elements or not isinstance(elements, list):
+            return channelsearch
+
         for element in elements:
-            element = self._getValue(element, ["childVideoRenderer"])
-            json = {
-                "id": self._getValue(element, ["videoId"]),
-                "title": self._getValue(element, ["title", "simpleText"]),
+            if not isinstance(element, dict):
+                continue
+            child = self._getValue(element, ["childVideoRenderer"])
+            if not child:
+                continue
+            json_data = {
+                "id": self._getValue(child, ["videoId"]),
+                "title": self._getValue(child, ["title", "simpleText"]),
                 "uri": self._getValue(
-                    element,
+                    child,
                     [
                         "navigationEndpoint",
                         "commandMetadata",
@@ -234,26 +253,35 @@ class ComponentHandler:
                     ],
                 ),
                 "duration": {
-                    "simpleText": self._getValue(element, ["lengthText", "simpleText"]),
+                    "simpleText": self._getValue(child, ["lengthText", "simpleText"]),
                     "text": self._getValue(
-                        element,
+                        child,
                         ["lengthText", "accessibility", "accessibilityData", "label"],
                     ),
                 },
             }
-            channelsearch.append(json)
+            channelsearch.append(json_data)
         return channelsearch
 
     def _getChannelSearchComponent(self, elements: list) -> list:
-        channelsearch = []
+        channelsearch: List[Dict[str, Any]] = []
+        if not elements or not isinstance(elements, list):
+            return channelsearch
+
         for element in elements:
+            if not isinstance(element, dict):
+                continue
+
             responsetype = None
 
             if "gridPlaylistRenderer" in element:
                 element = element["gridPlaylistRenderer"]
                 responsetype = "gridplaylist"
             elif "itemSectionRenderer" in element:
-                first_content = element["itemSectionRenderer"]["contents"][0]
+                contents = element["itemSectionRenderer"].get("contents", [])
+                if not contents:
+                    continue
+                first_content = contents[0]
                 if "videoRenderer" in first_content:
                     element = first_content["videoRenderer"]
                     responsetype = "video"
@@ -261,16 +289,22 @@ class ComponentHandler:
                     element = first_content["playlistRenderer"]
                     responsetype = "playlist"
                 else:
-                    raise Exception(f"Unexpected first_content {first_content}")
+                    logger.debug(
+                        "Skipping unrecognized itemSectionRenderer content: %s",
+                        first_content,
+                    )
+                    continue
             elif "continuationItemRenderer" in element:
-                # for endless scrolling, not needed here
-                # TODO: Implement endless scrolling
                 continue
             else:
-                raise Exception(f"Unexpected element {element}")
+                logger.debug(
+                    "Skipping unrecognized channel search element: %s", element
+                )
+                continue
 
+            json_data: Dict[str, Any]
             if responsetype == "video":
-                json = {
+                json_data = {
                     "id": self._getValue(element, ["videoId"]),
                     "thumbnails": {
                         "normal": self._getValue(element, ["thumbnail", "thumbnails"]),
@@ -348,7 +382,7 @@ class ComponentHandler:
                     "type": responsetype,
                 }
             elif responsetype == "playlist":
-                json = {
+                json_data = {
                     "id": self._getValue(element, ["playlistId"]),
                     "videos": self._getVideoFromChannelSearch(
                         self._getValue(element, ["videos"])
@@ -374,7 +408,7 @@ class ComponentHandler:
                     "type": responsetype,
                 }
             else:
-                json = {
+                json_data = {
                     "id": self._getValue(element, ["playlistId"]),
                     "thumbnails": {
                         "normal": self._getValue(
@@ -393,17 +427,18 @@ class ComponentHandler:
                     ),
                     "type": "playlist",
                 }
-            channelsearch.append(json)
+            channelsearch.append(json_data)
         return channelsearch
 
     def _getShelfComponent(self, element: dict) -> dict:
-        shelf = element[shelfElementKey]
+        shelf = element.get(shelfElementKey, {})
         return {
             "title": self._getValue(shelf, ["title", "simpleText"]),
             "elements": self._getValue(
                 shelf, ["content", "verticalListRenderer", "items"]
-            ),
+            )
+            or [],
         }
 
-    def _getValue(self, source: dict, path: List[str]) -> Union[str, int, dict, None]:
+    def _getValue(self, source: Any, path: List[Union[str, int, None]]) -> Any:
         return getValue(source, path)

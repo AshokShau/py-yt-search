@@ -1,7 +1,8 @@
 import copy
 import json
+import logging
 import re
-from typing import Iterable, Mapping, TypeVar, Union, List
+from typing import Any, Dict, Iterable, Mapping, TypeVar, Union, List, Optional
 from urllib.parse import urlencode
 
 from py_yt.core.constants import (
@@ -10,21 +11,20 @@ from py_yt.core.constants import (
     requestPayload,
     playlistVideoKey,
     continuationKeyPath,
-    playlistPrimaryInfoKey,
-    playlistSecondaryInfoKey,
-    continuationItemKey,
 )
 from py_yt.core.requests import RequestCore
 from py_yt.core.componenthandler import getValue as coreGetValue
+
+logger = logging.getLogger(__name__)
 
 K = TypeVar("K")
 T = TypeVar("T")
 
 
 class PlaylistCore(RequestCore):
-    playlistComponent = None
-    result = None
-    continuationKey = None
+    playlistComponent: Any = None
+    result: Any = None
+    continuationKey: Optional[str] = None
 
     def __init__(
         self,
@@ -78,9 +78,10 @@ class PlaylistCore(RequestCore):
             await self.create()
 
     def prepare_first_request(self):
-        self.url.strip("/")
+        self.url = self.url.rstrip("/")
 
-        _id = re.search(r"(?<=list=)([a-zA-Z0-9+/=_-]+)", self.url).group()
+        match = re.search(r"(?<=list=)([a-zA-Z0-9+/=_-]+)", self.url)
+        _id = match.group() if match else self.url
 
         if _id.startswith("RD"):
             # YouTube Mix Playlist
@@ -143,11 +144,12 @@ class PlaylistCore(RequestCore):
     def __parseSource(self) -> None:
         try:
             self.responseSource = json.loads(self.response)
-        except:
-            raise Exception("ERROR: Could not parse YouTube response.")
+        except Exception as e:
+            logger.error("Could not parse YouTube playlist response", exc_info=True)
+            raise Exception("ERROR: Could not parse YouTube response.") from e
 
     def __getComponents(self) -> None:
-        if "sidebar" in self.responseSource:
+        if isinstance(self.responseSource, dict) and "sidebar" in self.responseSource:
             # Traditional browse response
             sidebar = self.responseSource["sidebar"]["playlistSidebarRenderer"]["items"]
             inforenderer = sidebar[0]["playlistSidebarPrimaryInfoRenderer"]
@@ -159,34 +161,34 @@ class PlaylistCore(RequestCore):
                 if channel_details_available
                 else None
             )
-            videorenderer: list = self.__getFirstValue(
+            videorenderer_val = self.__getFirstValue(
                 self.responseSource,
                 [
                     "contents",
                     "twoColumnBrowseResultsRenderer",
                     "tabs",
-                    None,
                     "tabRenderer",
                     "content",
                     "sectionListRenderer",
                     "contents",
-                    None,
                     "itemSectionRenderer",
                     "contents",
-                    None,
                     "playlistVideoListRenderer",
                     "contents",
                 ],
             )
+            videorenderer: list = (
+                videorenderer_val if isinstance(videorenderer_val, list) else []
+            )
             videos = []
-            if videorenderer is None:
-                videorenderer = []
             for video in videorenderer:
                 try:
                     video = video["playlistVideoRenderer"]
                     j = {
                         "id": self.__getValue(video, ["videoId"]),
-                        "thumbnails": self.__getValue(video, ["thumbnail", "thumbnails"]),
+                        "thumbnails": self.__getValue(
+                            video, ["thumbnail", "thumbnails"]
+                        ),
                         "title": self.__getValue(video, ["title", "runs", 0, "text"]),
                         "channel": {
                             "name": self.__getValue(
@@ -215,11 +217,18 @@ class PlaylistCore(RequestCore):
                                 ],
                             ),
                         },
-                        "duration": self.__getValue(video, ["lengthText", "simpleText"]),
+                        "duration": self.__getValue(
+                            video, ["lengthText", "simpleText"]
+                        ),
                         "accessibility": {
                             "title": self.__getValue(
                                 video,
-                                ["title", "accessibility", "accessibilityData", "label"],
+                                [
+                                    "title",
+                                    "accessibility",
+                                    "accessibilityData",
+                                    "label",
+                                ],
                             ),
                             "duration": self.__getValue(
                                 video,
@@ -232,19 +241,21 @@ class PlaylistCore(RequestCore):
                             ),
                         },
                         "link": "https://www.youtube.com"
-                        + self.__getValue(
-                            video,
-                            [
-                                "navigationEndpoint",
-                                "commandMetadata",
-                                "webCommandMetadata",
-                                "url",
-                            ],
+                        + str(
+                            self.__getValue(
+                                video,
+                                [
+                                    "navigationEndpoint",
+                                    "commandMetadata",
+                                    "webCommandMetadata",
+                                    "url",
+                                ],
+                            )
                         ),
                         "isPlayable": self.__getValue(video, ["isPlayable"]),
                     }
                     videos.append(j)
-                except:
+                except Exception:
                     pass
 
             playlistElement = {
@@ -269,11 +280,15 @@ class PlaylistCore(RequestCore):
                             "thumbnails",
                         ],
                     ),
-                    "title": self.__getValue(inforenderer, ["title", "runs", 0, "text"]),
+                    "title": self.__getValue(
+                        inforenderer, ["title", "runs", 0, "text"]
+                    ),
                     "videoCount": self.__getValue(
                         inforenderer, ["stats", 0, "runs", 0, "text"]
                     ),
-                    "viewCount": self.__getValue(inforenderer, ["stats", 1, "simpleText"]),
+                    "viewCount": self.__getValue(
+                        inforenderer, ["stats", 1, "simpleText"]
+                    ),
                     "link": self.__getValue(
                         self.responseSource,
                         ["microformat", "microformatDataRenderer", "urlCanonical"],
@@ -295,29 +310,35 @@ class PlaylistCore(RequestCore):
                             else None
                         ),
                         "name": (
-                            self.__getValue(channelrenderer, ["title", "runs", 0, "text"])
+                            self.__getValue(
+                                channelrenderer, ["title", "runs", 0, "text"]
+                            )
                             if channel_details_available
                             else None
                         ),
                         "detailsAvailable": channel_details_available,
                         "link": (
                             "https://www.youtube.com"
-                            + self.__getValue(
-                                channelrenderer,
-                                [
-                                    "title",
-                                    "runs",
-                                    0,
-                                    "navigationEndpoint",
-                                    "browseEndpoint",
-                                    "canonicalBaseUrl",
-                                ],
+                            + str(
+                                self.__getValue(
+                                    channelrenderer,
+                                    [
+                                        "title",
+                                        "runs",
+                                        0,
+                                        "navigationEndpoint",
+                                        "browseEndpoint",
+                                        "canonicalBaseUrl",
+                                    ],
+                                )
                             )
                             if channel_details_available
                             else None
                         ),
                         "thumbnails": (
-                            self.__getValue(channelrenderer, ["thumbnail", "thumbnails"])
+                            self.__getValue(
+                                channelrenderer, ["thumbnail", "thumbnails"]
+                            )
                             if channel_details_available
                             else None
                         ),
@@ -331,7 +352,7 @@ class PlaylistCore(RequestCore):
                 self.playlistComponent = {"videos": videos}
             else:
                 self.playlistComponent = playlistElement
-            self.continuationKey = self.__getValue(
+            c_key = self.__getValue(
                 videorenderer,
                 [
                     -1,
@@ -341,7 +362,10 @@ class PlaylistCore(RequestCore):
                     "token",
                 ],
             )
-        elif "contents" in self.responseSource:
+            self.continuationKey = str(c_key) if c_key is not None else None
+        elif (
+            isinstance(self.responseSource, dict) and "contents" in self.responseSource
+        ):
             # YouTube Mix Playlist (next endpoint)
             playlist = self.responseSource["contents"]["twoColumnWatchNextResults"][
                 "playlist"
@@ -357,9 +381,8 @@ class PlaylistCore(RequestCore):
                             "thumbnails": self.__getValue(
                                 video, ["thumbnail", "thumbnails"]
                             ),
-                            "title": self.__getValue(
-                                video, ["title", "simpleText"]
-                            ) or self.__getValue(video, ["title", "runs", 0, "text"]),
+                            "title": self.__getValue(video, ["title", "simpleText"])
+                            or self.__getValue(video, ["title", "runs", 0, "text"]),
                             "channel": {
                                 "name": self.__getValue(
                                     video, ["shortBylineText", "runs", 0, "text"]
@@ -376,26 +399,28 @@ class PlaylistCore(RequestCore):
                                     ],
                                 ),
                                 "link": "https://www.youtube.com"
-                                + self.__getValue(
-                                    video,
-                                    [
-                                        "shortBylineText",
-                                        "runs",
-                                        0,
-                                        "navigationEndpoint",
-                                        "browseEndpoint",
-                                        "canonicalBaseUrl",
-                                    ],
+                                + str(
+                                    self.__getValue(
+                                        video,
+                                        [
+                                            "shortBylineText",
+                                            "runs",
+                                            0,
+                                            "navigationEndpoint",
+                                            "browseEndpoint",
+                                            "canonicalBaseUrl",
+                                        ],
+                                    )
                                 ),
                             },
                             "duration": self.__getValue(
                                 video, ["lengthText", "simpleText"]
                             ),
                             "link": "https://www.youtube.com/watch?v="
-                            + self.__getValue(video, ["videoId"]),
+                            + str(self.__getValue(video, ["videoId"])),
                         }
                         videos.append(j)
-                except:
+                except Exception:
                     pass
             playlistElement = {
                 "info": {
@@ -403,7 +428,7 @@ class PlaylistCore(RequestCore):
                     "title": playlist.get("title"),
                     "videoCount": str(len(videos)),
                     "link": "https://www.youtube.com/playlist?list="
-                    + playlist.get("playlistId"),
+                    + str(playlist.get("playlistId")),
                     "channel": None,
                 },
                 "videos": videos,
@@ -418,7 +443,7 @@ class PlaylistCore(RequestCore):
 
     def __getNextComponents(self) -> None:
         self.continuationKey = None
-        playlistComponent = {
+        playlistComponent: Dict[str, Any] = {
             "videos": [],
         }
         continuationElements = self.__getValue(
@@ -430,198 +455,11 @@ class PlaylistCore(RequestCore):
                 "continuationItems",
             ],
         )
-        if continuationElements is None:
-            # YouTube Backend issue - See https://github.com/alexmercerind/youtube-search-python/issues/157
+        if continuationElements is None or not isinstance(continuationElements, list):
             return
         for videoElement in continuationElements:
-            if playlistVideoKey in videoElement.keys():
-                videoComponent = {
-                    "id": self.__getValue(videoElement, [playlistVideoKey, "videoId"]),
-                    "title": self.__getValue(
-                        videoElement, [playlistVideoKey, "title", "runs", 0, "text"]
-                    ),
-                    "thumbnails": self.__getValue(
-                        videoElement, [playlistVideoKey, "thumbnail", "thumbnails"]
-                    ),
-                    "link": "https://www.youtube.com"
-                    + self.__getValue(
-                        videoElement,
-                        [
-                            playlistVideoKey,
-                            "navigationEndpoint",
-                            "commandMetadata",
-                            "webCommandMetadata",
-                            "url",
-                        ],
-                    ),
-                    "channel": {
-                        "name": self.__getValue(
-                            videoElement,
-                            [playlistVideoKey, "shortBylineText", "runs", 0, "text"],
-                        ),
-                        "id": self.__getValue(
-                            videoElement,
-                            [
-                                playlistVideoKey,
-                                "shortBylineText",
-                                "runs",
-                                0,
-                                "navigationEndpoint",
-                                "browseEndpoint",
-                                "browseId",
-                            ],
-                        ),
-                        "link": "https://www.youtube.com"
-                        + self.__getValue(
-                            videoElement,
-                            [
-                                playlistVideoKey,
-                                "shortBylineText",
-                                "runs",
-                                0,
-                                "navigationEndpoint",
-                                "browseEndpoint",
-                                "canonicalBaseUrl",
-                            ],
-                        ),
-                    },
-                    "duration": self.__getValue(
-                        videoElement, [playlistVideoKey, "lengthText", "simpleText"]
-                    ),
-                    "accessibility": {
-                        "title": self.__getValue(
-                            videoElement,
-                            [
-                                playlistVideoKey,
-                                "title",
-                                "accessibility",
-                                "accessibilityData",
-                                "label",
-                            ],
-                        ),
-                        "duration": self.__getValue(
-                            videoElement,
-                            [
-                                playlistVideoKey,
-                                "lengthText",
-                                "accessibility",
-                                "accessibilityData",
-                                "label",
-                            ],
-                        ),
-                    },
-                }
-                playlistComponent["videos"].append(videoComponent)
-            self.continuationKey = self.__getValue(videoElement, continuationKeyPath)
-        self.playlistComponent["videos"].extend(playlistComponent["videos"])
-
-    def __getPlaylistComponent(self, element: dict, mode: str) -> dict:
-        playlistComponent = {}
-        if mode in ["getInfo", None]:
-            for infoElement in element["info"]:
-                if playlistPrimaryInfoKey in infoElement.keys():
-                    component = {
-                        "id": self.__getValue(
-                            infoElement,
-                            [
-                                playlistPrimaryInfoKey,
-                                "title",
-                                "runs",
-                                0,
-                                "navigationEndpoint",
-                                "watchEndpoint",
-                                "playlistId",
-                            ],
-                        ),
-                        "title": self.__getValue(
-                            infoElement,
-                            [playlistPrimaryInfoKey, "title", "runs", 0, "text"],
-                        ),
-                        "videoCount": self.__getValue(
-                            infoElement,
-                            [playlistPrimaryInfoKey, "stats", 0, "runs", 0, "text"],
-                        ),
-                        "viewCount": self.__getValue(
-                            infoElement,
-                            [playlistPrimaryInfoKey, "stats", 1, "simpleText"],
-                        ),
-                        "thumbnails": self.__getValue(
-                            infoElement,
-                            [
-                                playlistPrimaryInfoKey,
-                                "thumbnailRenderer",
-                                "playlistVideoThumbnailRenderer",
-                                "thumbnail",
-                            ],
-                        ),
-                    }
-                    if not component["thumbnails"]:
-                        component["thumbnails"] = (
-                            self.__getValue(
-                                infoElement,
-                                [
-                                    playlistPrimaryInfoKey,
-                                    "thumbnailRenderer",
-                                    "playlistCustomThumbnailRenderer",
-                                    "thumbnail",
-                                    "thumbnails",
-                                ],
-                            ),
-                        )
-                    component["link"] = (
-                        "https://www.youtube.com/playlist?list=" + component["id"]
-                    )
-                    playlistComponent.update(component)
-                if playlistSecondaryInfoKey in infoElement.keys():
-                    component = {
-                        "channel": {
-                            "name": self.__getValue(
-                                infoElement,
-                                [
-                                    playlistSecondaryInfoKey,
-                                    "videoOwner",
-                                    "videoOwnerRenderer",
-                                    "title",
-                                    "runs",
-                                    0,
-                                    "text",
-                                ],
-                            ),
-                            "id": self.__getValue(
-                                infoElement,
-                                [
-                                    playlistSecondaryInfoKey,
-                                    "videoOwner",
-                                    "videoOwnerRenderer",
-                                    "title",
-                                    "runs",
-                                    0,
-                                    "navigationEndpoint",
-                                    "browseEndpoint",
-                                    "browseId",
-                                ],
-                            ),
-                            "thumbnails": self.__getValue(
-                                infoElement,
-                                [
-                                    playlistSecondaryInfoKey,
-                                    "videoOwner",
-                                    "videoOwnerRenderer",
-                                    "thumbnail",
-                                    "thumbnails",
-                                ],
-                            ),
-                        },
-                    }
-                    component["channel"]["link"] = (
-                        "https://www.youtube.com/channel/" + component["channel"]["id"]
-                    )
-                    playlistComponent.update(component)
-        if mode in ["getVideos", None]:
-            self.continuationKey = None
-            playlistComponent["videos"] = []
-            for videoElement in element["videos"]:
-                if playlistVideoKey in videoElement.keys():
+            if isinstance(videoElement, dict):
+                if playlistVideoKey in videoElement:
                     videoComponent = {
                         "id": self.__getValue(
                             videoElement, [playlistVideoKey, "videoId"]
@@ -632,6 +470,19 @@ class PlaylistCore(RequestCore):
                         "thumbnails": self.__getValue(
                             videoElement, [playlistVideoKey, "thumbnail", "thumbnails"]
                         ),
+                        "link": "https://www.youtube.com"
+                        + str(
+                            self.__getValue(
+                                videoElement,
+                                [
+                                    playlistVideoKey,
+                                    "navigationEndpoint",
+                                    "commandMetadata",
+                                    "webCommandMetadata",
+                                    "url",
+                                ],
+                            )
+                        ),
                         "channel": {
                             "name": self.__getValue(
                                 videoElement,
@@ -654,6 +505,21 @@ class PlaylistCore(RequestCore):
                                     "browseEndpoint",
                                     "browseId",
                                 ],
+                            ),
+                            "link": "https://www.youtube.com"
+                            + str(
+                                self.__getValue(
+                                    videoElement,
+                                    [
+                                        playlistVideoKey,
+                                        "shortBylineText",
+                                        "runs",
+                                        0,
+                                        "navigationEndpoint",
+                                        "browseEndpoint",
+                                        "canonicalBaseUrl",
+                                    ],
+                                )
                             ),
                         },
                         "duration": self.__getValue(
@@ -682,38 +548,40 @@ class PlaylistCore(RequestCore):
                             ),
                         },
                     }
-                    videoComponent["link"] = (
-                        "https://www.youtube.com/watch?v=" + videoComponent["id"]
-                    )
-                    videoComponent["channel"]["link"] = (
-                        "https://www.youtube.com/channel/"
-                        + videoComponent["channel"]["id"]
-                    )
                     playlistComponent["videos"].append(videoComponent)
-                if continuationItemKey in videoElement.keys():
-                    self.continuationKey = self.__getValue(
-                        videoElement, continuationKeyPath
-                    )
-        return playlistComponent
+                c_key = self.__getValue(videoElement, list(continuationKeyPath))
+                self.continuationKey = str(c_key) if c_key is not None else None
+        if (
+            isinstance(self.playlistComponent, dict)
+            and "videos" in self.playlistComponent
+        ):
+            self.playlistComponent["videos"].extend(playlistComponent["videos"])
 
     def __result(self, mode: int) -> Union[dict, str]:
         if mode == ResultMode.dict:
-            return self.playlistComponent
+            return (
+                self.playlistComponent
+                if isinstance(self.playlistComponent, dict)
+                else {}
+            )
         elif mode == ResultMode.json:
             return json.dumps(self.playlistComponent, indent=4)
+        return self.playlistComponent or {}
 
     def __getValue(
-        self, source: dict, path: Iterable[str]
+        self, source: Any, path: Iterable[Union[str, int, None]]
     ) -> Union[str, int, dict, None]:
         return coreGetValue(source, list(path))
 
     def __getAllWithKey(self, source: Iterable[Mapping[K, T]], key: K) -> Iterable[T]:
+        if not isinstance(source, Iterable):
+            return
         for item in source:
-            if key in item:
+            if isinstance(item, Mapping) and key in item:
                 yield item[key]
 
     def __getValueEx(
-        self, source: dict, path: List[str]
+        self, source: Any, path: List[Optional[str]]
     ) -> Iterable[Union[str, int, dict, None]]:
         if len(path) <= 0:
             yield source
@@ -721,21 +589,29 @@ class PlaylistCore(RequestCore):
         key = path[0]
         upcoming = path[1:]
         if key is None:
+            if not upcoming:
+                yield None
+                return
             following_key = upcoming[0]
             upcoming = upcoming[1:]
             if following_key is None:
                 raise Exception(
                     "Cannot search for a key twice consecutive or at the end with no key given"
                 )
-            values = self.__getAllWithKey(source, following_key)
-            for val in values:
-                yield from self.__getValueEx(val, path=upcoming)
+            if isinstance(source, dict):
+                for val in source.values():
+                    if isinstance(val, dict) and following_key in val:
+                        yield from self.__getValueEx(val[following_key], upcoming)
+            elif isinstance(source, list):
+                for item in source:
+                    if isinstance(item, dict) and following_key in item:
+                        yield from self.__getValueEx(item[following_key], upcoming)
         else:
             val = self.__getValue(source, path=[key])
             yield from self.__getValueEx(val, path=upcoming)
 
     def __getFirstValue(
-        self, source: dict, path: Iterable[str]
+        self, source: Any, path: Iterable[Optional[str]]
     ) -> Union[str, int, dict, list, None]:
         values = self.__getValueEx(source, list(path))
         for val in values:

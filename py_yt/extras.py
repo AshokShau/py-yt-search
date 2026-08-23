@@ -1,5 +1,5 @@
 import copy
-from typing import Union
+from typing import Any, Dict, List, Optional, Union
 
 from py_yt.core.browse import BrowseCore
 from py_yt.core.channel import ChannelCore
@@ -22,7 +22,7 @@ class Video:
         proxy: str | None = None,
     ) -> Union[dict, None]:
         video = VideoCore(
-            video_link, None, result_mode, timeout, get_upload_date, proxy=proxy
+            video_link, "", result_mode, timeout, get_upload_date, proxy=proxy
         )
         if get_upload_date:
             await video.html_create()
@@ -36,7 +36,9 @@ class Video:
         timeout: int = 2,
         proxy: str | None = None,
     ) -> Union[dict, None]:
-        video = VideoCore(video_link, "getInfo", result_mode, timeout, True, proxy=proxy)
+        video = VideoCore(
+            video_link, "getInfo", result_mode, timeout, True, proxy=proxy
+        )
         await video.html_create()
         video.post_request_processing()
         return video.result
@@ -72,11 +74,11 @@ class Suggestions:
 
 
 class Playlist:
-    playlistLink = None
-    videos = []
-    info = None
-    hasMoreVideos = True
-    __playlist = None
+    playlistLink: str
+    videos: List[Dict[str, Any]] = []
+    info: Any = None
+    hasMoreVideos: bool = True
+    __playlist: Any = None
 
     def __init__(self, playlistLink: str, proxy: str | None = None):
         self.playlistLink = playlistLink
@@ -85,23 +87,24 @@ class Playlist:
     async def getNextVideos(self) -> None:
         if not self.info:
             self.__playlist = PlaylistCore(
-                self.playlistLink, None, ResultMode.dict, 2, proxy=self.proxy
+                self.playlistLink, "", ResultMode.dict, 2, proxy=self.proxy
             )
             await self.__playlist._next()
             self.info = copy.deepcopy(self.__playlist.playlistComponent)
-            self.videos = self.__playlist.playlistComponent["videos"]
-            self.hasMoreVideos = self.__playlist.continuationKey != None
-            self.info.pop("videos")
+            self.videos = self.__playlist.playlistComponent.get("videos", [])
+            self.hasMoreVideos = self.__playlist.continuationKey is not None
+            if isinstance(self.info, dict):
+                self.info.pop("videos", None)
         else:
             await self.__playlist._next()
-            self.videos = self.__playlist.playlistComponent["videos"]
-            self.hasMoreVideos = self.__playlist.continuationKey != None
+            self.videos = self.__playlist.playlistComponent.get("videos", [])
+            self.hasMoreVideos = self.__playlist.continuationKey is not None
 
     @staticmethod
     async def get(
         playlistLink: str, proxy: str | None = None
     ) -> Union[dict, str, None]:
-        playlist = PlaylistCore(playlistLink, None, ResultMode.dict, 2, proxy=proxy)
+        playlist = PlaylistCore(playlistLink, "", ResultMode.dict, 2, proxy=proxy)
         await playlist.create()
         return playlist.playlistComponent
 
@@ -133,26 +136,27 @@ class Hashtag(HashtagCore):
         limit: int = 60,
         language: str = "en",
         region: str = "US",
-        timeout: int = None,
+        timeout: Optional[int] = None,
         proxy: str | None = None,
     ):
-        super().__init__(hashtag, limit, language, region, timeout, proxy=proxy)
+        super().__init__(
+            hashtag,
+            limit,
+            language,
+            region,
+            timeout if timeout is not None else 7,
+            proxy=proxy,
+        )
 
-    async def next(self) -> dict:
-        self.response = None
-        self.resultComponents = []
-        if self.params is None:
-            await self._getParams()
-        await self._makeRequest()
-        self._getComponents()
-        return {
-            "result": self.resultComponents,
-        }
+    async def next(self) -> bool:  # type: ignore[override]
+        return await super().next()
 
 
 class Transcript:
     @staticmethod
-    async def get(videoLink: str, params: str = None, proxy: str | None = None):
+    async def get(
+        videoLink: str, params: Optional[str] = None, proxy: str | None = None
+    ):
         transcript_core = TranscriptCore(videoLink, params, proxy=proxy)
         await transcript_core.create()
         return transcript_core.result

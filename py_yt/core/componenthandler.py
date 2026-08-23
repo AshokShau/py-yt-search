@@ -9,7 +9,7 @@ def getValue(source: Any, path: List[Union[str, int, None]]) -> Any:
     for key in path:
         if key is None:
             return None
-        
+
         if isinstance(key, str):
             if isinstance(value, dict) and key in value:
                 value = value[key]

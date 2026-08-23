@@ -46,8 +46,8 @@ CLIENTS = {
 
 
 def _get_cleaned_url(video_link: str) -> str:
-    """
-    Cleans the YouTube video link by removing any extra parameters,
+    """Cleans the YouTube video link by removing any extra parameters,
+
     ensuring only the video ID is present.
     """
     parsed_url = urlparse(video_link)
@@ -132,19 +132,20 @@ class VideoCore(RequestCore):
     async def html_create(self):
         self.prepare_html_request()
         response = await self.postRequest()
+        if response is None:
+            raise Exception("ERROR: Could not fetch HTML response.")
         self.HTMLresponseSource = await response.json()
 
     def __parseSource(self) -> None:
         try:
             self.responseSource = json.loads(self.response)
         except Exception as e:
-            raise Exception("ERROR: Could not parse YouTube response." + str(e))
+            raise Exception("ERROR: Could not parse YouTube response.") from e
 
     def __result(self, mode: int) -> Union[dict, str]:
         if mode == ResultMode.dict:
             return self.__videoComponent
-        elif mode == ResultMode.json:
-            return json.dumps(self.__videoComponent, indent=4)
+        return json.dumps(self.__videoComponent, indent=4)
 
     def __getVideoComponent(self, mode: str) -> None:
         videoComponent = {}

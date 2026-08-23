@@ -1,7 +1,6 @@
 import pytest
 from py_yt.core.browse import BrowseCore
 from py_yt.core.recommendations import RelatedVideosCore
-from py_yt.core.transcript import TranscriptCore
 from py_yt.core.video import VideoCore
 from py_yt import Suggestions
 

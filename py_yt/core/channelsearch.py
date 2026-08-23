@@ -1,17 +1,20 @@
 import copy
 import json
-from typing import Union
+import logging
+from typing import Any, Dict, List, Union
 from urllib.parse import urlencode
 
 from py_yt.core.constants import requestPayload, searchKey, ResultMode
 from py_yt.core.requests import RequestCore
 from py_yt.handlers.componenthandler import ComponentHandler
 
+logger = logging.getLogger(__name__)
+
 
 class ChannelSearchCore(RequestCore, ComponentHandler):
     response = None
     responseSource = None
-    resultComponents = []
+    resultComponents: List[Dict[str, Any]] = []
 
     def __init__(
         self,
@@ -43,21 +46,38 @@ class ChannelSearchCore(RequestCore, ComponentHandler):
         self.continuationKey = None
         self.timeout = timeout
 
-    async def next(self):
-        await self._asyncRequest()
+    async def next(self) -> dict:
+        await self._makeRequest()
         self._parseChannelSearchSource()
-        self.response = self._getChannelSearchComponent(self.response)
-        return self.response
+        raw_elements: List[Any] = (
+            self.response if isinstance(self.response, list) else []
+        )
+        components = self._getChannelSearchComponent(raw_elements)
+        self.response = components
+        return {"result": components}
 
     def _parseChannelSearchSource(self) -> None:
         try:
-            last_tab = self.response["contents"]["twoColumnBrowseResultsRenderer"][
-                "tabs"
-            ][-1]
+            if not isinstance(self.response, dict):
+                self.response = []
+                return
+
+            contents = (
+                self.response.get("contents", {})
+                .get("twoColumnBrowseResultsRenderer", {})
+                .get("tabs", [])
+            )
+            if not contents:
+                self.response = []
+                return
+
+            last_tab = contents[-1]
             if "expandableTabRenderer" in last_tab:
                 renderer = last_tab["expandableTabRenderer"]
                 if "content" in renderer:
-                    self.response = renderer["content"]["sectionListRenderer"]["contents"]
+                    self.response = renderer["content"]["sectionListRenderer"][
+                        "contents"
+                    ]
                 else:
                     self.response = []
             elif "tabRenderer" in last_tab:
@@ -70,8 +90,11 @@ class ChannelSearchCore(RequestCore, ComponentHandler):
                     self.response = []
             else:
                 self.response = []
-        except:
-            raise Exception("ERROR: Could not parse YouTube response.")
+        except Exception as e:
+            logger.error(
+                "Could not parse channel search YouTube response", exc_info=True
+            )
+            raise Exception("ERROR: Could not parse YouTube response.") from e
 
     def _getRequestBody(self):
         requestBody = copy.deepcopy(requestPayload)
@@ -95,10 +118,16 @@ class ChannelSearchCore(RequestCore, ComponentHandler):
         self._getRequestBody()
 
         request = await self.postRequest()
+        if request is None:
+            raise Exception("ERROR: Could not make request.")
+
         try:
             self.response = await request.json()
-        except:
-            raise Exception("ERROR: Could not make request.")
+        except Exception as e:
+            logger.error(
+                "Failed to parse JSON response from channel search", exc_info=True
+            )
+            raise Exception("ERROR: Could not make request.") from e
 
     def result(self, mode: int = ResultMode.dict) -> Union[str, dict]:
         """Returns the search result.
@@ -109,6 +138,4 @@ class ChannelSearchCore(RequestCore, ComponentHandler):
         """
         if mode == ResultMode.json:
             return json.dumps({"result": self.response}, indent=4)
-        elif mode == ResultMode.dict:
-            return {"result": self.response}
-
+        return {"result": self.response}

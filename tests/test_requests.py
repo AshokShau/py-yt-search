@@ -3,7 +3,7 @@ import pytest
 from py_yt.core.requests import RequestCore
 from py_yt.core.search import SearchCore
 from py_yt.core.channelsearch import ChannelSearchCore
-from py_yt.core.constants import userAgent, requestPayload, CLIENT_PROFILES
+from py_yt.core.constants import userAgent
 from py_yt.core.session import (
     set_session_visitor_data,
     get_session_visitor_data,
@@ -79,7 +79,10 @@ async def test_request_core_po_token_and_visitor_data():
     headers = req._prepare_request_for_profile("WEB")
     assert headers["X-Goog-Visitor-Id"] == "CgVTEST123"
     assert req.data["context"]["client"]["visitorData"] == "CgVTEST123"
-    assert req.data["context"]["client"]["serviceIntegrityDimensions"]["poToken"] == "MnTESTPO123"
+    assert (
+        req.data["context"]["client"]["serviceIntegrityDimensions"]["poToken"]
+        == "MnTESTPO123"
+    )
 
 
 @pytest.mark.asyncio
@@ -98,7 +101,9 @@ async def test_resolve_tokens_with_verifier():
 @pytest.mark.asyncio
 async def test_automatic_visitor_data_fetch():
     req = RequestCore()
-    with patch.object(req, "_fetch_automatic_visitor_data", new_callable=AsyncMock) as mock_fetch:
+    with patch.object(
+        req, "_fetch_automatic_visitor_data", new_callable=AsyncMock
+    ) as mock_fetch:
         mock_fetch.return_value = "CgtMOCK_VISITOR_DATA"
         vd = await req._fetch_automatic_visitor_data()
         assert vd == "CgtMOCK_VISITOR_DATA"
@@ -111,7 +116,9 @@ def test_session_tokens():
     set_session_po_token("PO_SESS")
     assert get_session_po_token() == "PO_SESS"
 
-    v_fn = lambda: "PO"
+    def v_fn():
+        return "PO"
+
     set_session_po_token_verifier(v_fn)
     assert get_session_po_token_verifier() == v_fn
 

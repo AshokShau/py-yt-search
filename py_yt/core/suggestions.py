@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import Union
+from typing import Optional, Union
 from urllib.parse import urlencode
 
 from py_yt.core.constants import ResultMode
@@ -45,31 +45,35 @@ class SuggestionsCore(RequestCore):
         self,
         language: str = "en",
         region: str = "US",
-        timeout: int = None,
+        timeout: Optional[int] = None,
         proxy: str | None = None,
     ):
-        super().__init__(timeout=timeout, proxy=proxy)
+        super().__init__(timeout=timeout if timeout is not None else 7.0, proxy=proxy)
         self.language = language
         self.region = region
-        self.timeout = timeout
+        self.timeout: float = timeout if timeout is not None else 7.0
 
     def _post_request_processing(self, mode):
         searchSuggestions = []
 
         self.__parseSource()
-        for element in self.responseSource:
-            if type(element) is list:
-                for searchSuggestionElement in element:
-                    searchSuggestions.append(searchSuggestionElement[0])
-                break
+        if isinstance(self.responseSource, list):
+            for element in self.responseSource:
+                if isinstance(element, list):
+                    for searchSuggestionElement in element:
+                        if (
+                            isinstance(searchSuggestionElement, list)
+                            and searchSuggestionElement
+                        ):
+                            searchSuggestions.append(searchSuggestionElement[0])
+                    break
         if mode == ResultMode.dict:
             return {"result": searchSuggestions}
         elif mode == ResultMode.json:
             return json.dumps({"result": searchSuggestions}, indent=4)
+        return {"result": searchSuggestions}
 
-    async def _get(
-        self, query: str, mode: int = ResultMode.dict
-    ) -> Union[dict, str]:
+    async def _get(self, query: str, mode: int = ResultMode.dict) -> Union[dict, str]:
         self.url = (
             "https://clients1.google.com/complete/search"
             + "?"
@@ -90,11 +94,16 @@ class SuggestionsCore(RequestCore):
 
     def __parseSource(self) -> None:
         try:
-            start_index = self.response.index("([") + 1
-            end_index = self.response.rindex("])") + 1
-            self.responseSource = json.loads(self.response[start_index:end_index])
+            resp = self.response or ""
+            start_index = resp.index("([") + 1
+            end_index = resp.rindex("])") + 1
+            self.responseSource = json.loads(resp[start_index:end_index])
         except (ValueError, json.JSONDecodeError) as e:
-            logger.error("Could not parse YouTube response. Raw response: %r", self.response, exc_info=True)
+            logger.error(
+                "Could not parse YouTube response. Raw response: %r",
+                getattr(self, "response", None),
+                exc_info=True,
+            )
             raise Exception("ERROR: Could not parse YouTube response.") from e
 
     async def __makeRequest(self) -> None:
@@ -104,15 +113,4 @@ class SuggestionsCore(RequestCore):
         self.response = await request.text()
 
     def __result(self, mode: int) -> Union[dict, str]:
-        searchSuggestions = []
-
-        self.__parseSource()
-        for element in self.responseSource:
-            if type(element) is list:
-                for searchSuggestionElement in element:
-                    searchSuggestions.append(searchSuggestionElement[0])
-                break
-        if mode == ResultMode.dict:
-            return {"result": searchSuggestions}
-        elif mode == ResultMode.json:
-            return json.dumps({"result": searchSuggestions}, indent=4)
+        return self._post_request_processing(mode)

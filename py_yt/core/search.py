@@ -1,7 +1,7 @@
 import copy
 import json
 import re
-from typing import Union
+from typing import Any, Dict, List, Union
 from urllib.parse import urlencode
 
 from py_yt.core.constants import (
@@ -22,7 +22,8 @@ from py_yt.handlers.requesthandler import RequestHandler
 class SearchCore(RequestCore, RequestHandler, ComponentHandler):
     response = None
     responseSource = None
-    resultComponents = []
+    resultComponents: List[Dict[str, Any]] = []
+    searchMode = (True, True, True)
 
     def __init__(
         self,
@@ -109,8 +110,7 @@ class SearchCore(RequestCore, RequestHandler, ComponentHandler):
         """
         if mode == ResultMode.json:
             return json.dumps({"result": self.resultComponents}, indent=4)
-        elif mode == ResultMode.dict:
-            return {"result": self.resultComponents}
+        return {"result": self.resultComponents}
 
     async def next(self) -> dict:
         self.response = None
@@ -127,10 +127,12 @@ class SearchCore(RequestCore, RequestHandler, ComponentHandler):
         self, findVideos: bool, findChannels: bool, findPlaylists: bool
     ) -> None:
         self.resultComponents = []
-        if not self.responseSource:
+        if not self.responseSource or not isinstance(self.responseSource, list):
             return
 
         for element in self.responseSource:
+            if not isinstance(element, dict):
+                continue
             if videoElementKey in element and findVideos:
                 videoComponent = self._getVideoComponent(element)
                 if (
@@ -142,25 +144,35 @@ class SearchCore(RequestCore, RequestHandler, ComponentHandler):
                 self.resultComponents.append(videoComponent)
             if channelElementKey in element and findChannels:
                 self.resultComponents.append(self._getChannelComponent(element))
-            if (playlistElementKey in element or "lockupViewModel" in element) and findPlaylists:
+            if (
+                playlistElementKey in element or "lockupViewModel" in element
+            ) and findPlaylists:
                 self.resultComponents.append(self._getPlaylistComponent(element))
             if shelfElementKey in element and findVideos:
-                for shelfElement in self._getShelfComponent(element)["elements"]:
-                    videoComponent = self._getVideoComponent(
-                        shelfElement,
-                        shelfTitle=self._getShelfComponent(element)["title"],
-                    )
-                    if (
-                        not self.with_live
-                        and videoComponent["duration"] is None
-                        and videoComponent["publishedTime"] is None
-                    ):
-                        continue
-                    self.resultComponents.append(videoComponent)
+                shelfComp = self._getShelfComponent(element)
+                shelfElements = (
+                    shelfComp.get("elements") if isinstance(shelfComp, dict) else None
+                )
+                if shelfElements and isinstance(shelfElements, list):
+                    for shelfElement in shelfElements:
+                        if isinstance(shelfElement, dict):
+                            videoComponent = self._getVideoComponent(
+                                shelfElement,
+                                shelfTitle=shelfComp.get("title"),
+                            )
+                            if (
+                                not self.with_live
+                                and videoComponent["duration"] is None
+                                and videoComponent["publishedTime"] is None
+                            ):
+                                continue
+                            self.resultComponents.append(videoComponent)
             if richItemKey in element and findVideos:
                 richItemElement = self._getValue(element, [richItemKey, "content"])
-                """ Initial fallback handling for VideosSearch """
-                if videoElementKey in richItemElement:
+                if (
+                    isinstance(richItemElement, dict)
+                    and videoElementKey in richItemElement
+                ):
                     videoComponent = self._getVideoComponent(richItemElement)
                     if (
                         not self.with_live
