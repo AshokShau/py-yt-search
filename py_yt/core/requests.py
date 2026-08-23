@@ -218,6 +218,7 @@ class RequestCore:
         timeout = aiohttp.ClientTimeout(total=self.timeout)
 
         for i in range(self.max_retries + 1):
+            response = None
             profile_name = CLIENT_PROFILE_KEYS[i % len(CLIENT_PROFILE_KEYS)]
             headers = self._prepare_request_for_profile(profile_name)
 
@@ -229,34 +230,40 @@ class RequestCore:
                     proxy=self.proxy_url,
                     timeout=timeout,
                 )
-                try:
-                    response.raise_for_status()
-                    content = await response.read()
-                    self._extract_visitor_data_from_response(content, response.headers)
-                    return response
-                except Exception:
-                    response.release()
-                    raise
+
+                response.raise_for_status()
+                content = await response.read()
+                self._extract_visitor_data_from_response(content, response.headers)
+                return response
+
             except aiohttp.ClientResponseError as e:
-                logger.error(
-                    f"HTTP error during POST request (attempt {i+1}/{self.max_retries+1}, profile={profile_name})",
-                    extra={
-                        "status_code": e.status,
-                        "response_text": e.message,
-                        "url": self.url
-                    },
-                    exc_info=True,
-                )
-            except (aiohttp.ClientError, asyncio.TimeoutError) as e:
-                logger.error(
-                    f"Request error during POST request (attempt {i+1}/{self.max_retries+1}, profile={profile_name})",
-                    extra={
-                        "request_url": self.url,
-                    },
-                    exc_info=True,
-                )
+                if response is not None:
+                    response.release()
+
+                if i == self.max_retries:
+                    logger.exception(
+                        "HTTP error during POST request",
+                        extra={
+                            "status_code": e.status,
+                            "response_text": e.message,
+                            "url": self.url,
+                        },
+                    )
+
+            except (aiohttp.ClientError, asyncio.TimeoutError):
+                if response is not None:
+                    response.release()
+
+                if i == self.max_retries:
+                    logger.exception(
+                        "Request error during POST request",
+                        extra={
+                            "request_url": self.url,
+                        },
+                    )
+
             if i < self.max_retries:
-                await asyncio.sleep(1 * (2 ** i))
+                await asyncio.sleep(2 ** i)
         return None
 
     async def getRequest(self) -> aiohttp.ClientResponse | None:
@@ -270,6 +277,7 @@ class RequestCore:
         timeout = aiohttp.ClientTimeout(total=self.timeout)
 
         for i in range(self.max_retries + 1):
+            response = None
             profile_name = CLIENT_PROFILE_KEYS[i % len(CLIENT_PROFILE_KEYS)]
             headers = self._prepare_request_for_profile(profile_name)
 
@@ -281,32 +289,38 @@ class RequestCore:
                     proxy=self.proxy_url,
                     timeout=timeout,
                 )
-                try:
-                    response.raise_for_status()
-                    content = await response.read()
-                    self._extract_visitor_data_from_response(content, response.headers)
-                    return response
-                except Exception:
-                    response.release()
-                    raise
+
+                response.raise_for_status()
+                content = await response.read()
+                self._extract_visitor_data_from_response(content, response.headers)
+                return response
+
             except aiohttp.ClientResponseError as e:
-                logger.error(
-                    f"HTTP error during GET request (attempt {i+1}/{self.max_retries+1}, profile={profile_name})",
-                    extra={
-                        "status_code": e.status,
-                        "response_text": e.message,
-                        "url": self.url
-                    },
-                    exc_info=True,
-                )
-            except (aiohttp.ClientError, asyncio.TimeoutError) as e:
-                logger.error(
-                    f"Request error during GET request (attempt {i+1}/{self.max_retries+1}, profile={profile_name})",
-                    extra={
-                        "request_url": self.url,
-                    },
-                    exc_info=True,
-                )
+                if response is not None:
+                    response.release()
+
+                if i == self.max_retries:
+                    logger.exception(
+                        "HTTP error during GET request",
+                        extra={
+                            "status_code": e.status,
+                            "response_text": e.message,
+                            "url": self.url,
+                        },
+                    )
+
+            except (aiohttp.ClientError, asyncio.TimeoutError):
+                if response is not None:
+                    response.release()
+
+                if i == self.max_retries:
+                    logger.exception(
+                        "Request error during GET request",
+                        extra={
+                            "request_url": self.url,
+                        },
+                    )
+
             if i < self.max_retries:
-                await asyncio.sleep(1 * (2 ** i))
+                await asyncio.sleep(2 ** i)
         return None

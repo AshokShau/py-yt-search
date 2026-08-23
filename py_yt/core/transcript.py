@@ -142,6 +142,6 @@ class TranscriptCore(RequestCore):
                 self.data = await response.json()
             except Exception as e:
                 import logging
-                logging.error("ERROR: Could not parse YouTube response inside extract_transcript.", exc_info=True)
+                logging.exception("ERROR: Could not parse YouTube response inside extract_transcript.")
                 return
             self.extract_transcript()
