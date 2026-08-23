@@ -1,9 +1,12 @@
 import json
+import logging
 from typing import Union
 from urllib.parse import urlencode
 
 from py_yt.core.constants import ResultMode
 from py_yt.core.requests import RequestCore
+
+logger = logging.getLogger(__name__)
 
 
 class SuggestionsCore(RequestCore):
@@ -91,8 +94,7 @@ class SuggestionsCore(RequestCore):
             end_index = self.response.rindex("])") + 1
             self.responseSource = json.loads(self.response[start_index:end_index])
         except (ValueError, json.JSONDecodeError) as e:
-            import logging
-            logging.error("ERROR: Could not parse YouTube response. Raw response: %r", self.response)
+            logger.error("Could not parse YouTube response. Raw response: %r", self.response, exc_info=True)
             raise Exception("ERROR: Could not parse YouTube response.") from e
 
     async def __makeRequest(self) -> None:

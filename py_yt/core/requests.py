@@ -235,28 +235,33 @@ class RequestCore:
                     self._extract_visitor_data_from_response(content, response.headers)
                     return response
                 except Exception:
-                    response.release()
+                    if response is not None:
+                        response.release()
                     raise
             except aiohttp.ClientResponseError as e:
-                logger.error(
+                is_last_retry = (i == self.max_retries)
+                log_fn = logger.error if is_last_retry else logger.debug
+                log_fn(
                     f"HTTP error during POST request (attempt {i+1}/{self.max_retries+1}, profile={profile_name})",
                     extra={
                         "status_code": e.status,
                         "response_text": e.message,
                         "url": self.url
                     },
-                    exc_info=True,
+                    exc_info=is_last_retry,
                 )
             except (aiohttp.ClientError, asyncio.TimeoutError) as e:
-                logger.error(
+                is_last_retry = (i == self.max_retries)
+                log_fn = logger.error if is_last_retry else logger.debug
+                log_fn(
                     f"Request error during POST request (attempt {i+1}/{self.max_retries+1}, profile={profile_name})",
                     extra={
                         "request_url": self.url,
                     },
-                    exc_info=True,
+                    exc_info=is_last_retry,
                 )
             if i < self.max_retries:
-                await asyncio.sleep(1 * (2 ** i))
+                await asyncio.sleep(2 ** i)
         return None
 
     async def getRequest(self) -> aiohttp.ClientResponse | None:
@@ -272,6 +277,7 @@ class RequestCore:
         for i in range(self.max_retries + 1):
             profile_name = CLIENT_PROFILE_KEYS[i % len(CLIENT_PROFILE_KEYS)]
             headers = self._prepare_request_for_profile(profile_name)
+            response = None
 
             try:
                 response = await session.get(
@@ -287,26 +293,31 @@ class RequestCore:
                     self._extract_visitor_data_from_response(content, response.headers)
                     return response
                 except Exception:
-                    response.release()
+                    if response is not None:
+                        response.release()
                     raise
             except aiohttp.ClientResponseError as e:
-                logger.error(
+                is_last_retry = (i == self.max_retries)
+                log_fn = logger.error if is_last_retry else logger.debug
+                log_fn(
                     f"HTTP error during GET request (attempt {i+1}/{self.max_retries+1}, profile={profile_name})",
                     extra={
                         "status_code": e.status,
                         "response_text": e.message,
                         "url": self.url
                     },
-                    exc_info=True,
+                    exc_info=is_last_retry,
                 )
             except (aiohttp.ClientError, asyncio.TimeoutError) as e:
-                logger.error(
+                is_last_retry = (i == self.max_retries)
+                log_fn = logger.error if is_last_retry else logger.debug
+                log_fn(
                     f"Request error during GET request (attempt {i+1}/{self.max_retries+1}, profile={profile_name})",
                     extra={
                         "request_url": self.url,
                     },
-                    exc_info=True,
+                    exc_info=is_last_retry,
                 )
             if i < self.max_retries:
-                await asyncio.sleep(1 * (2 ** i))
+                await asyncio.sleep(2 ** i)
         return None

@@ -1,10 +1,6 @@
-import copy
 import json
-from urllib.parse import urlencode
 
 from py_yt.core.constants import (
-    requestPayload,
-    searchKey,
     contentPath,
     itemSectionKey,
     continuationItemKey,
