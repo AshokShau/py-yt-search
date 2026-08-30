@@ -129,100 +129,223 @@ class PlaylistCore(RequestCore):
                 if channel_details_available
                 else None
             )
-            videorenderer_val = self._get_first_value(
+            videorenderer_val = self._get_value(
                 self.responseSource,
                 [
                     "contents",
                     "twoColumnBrowseResultsRenderer",
                     "tabs",
+                    0,
                     "tabRenderer",
                     "content",
                     "sectionListRenderer",
                     "contents",
+                    0,
                     "itemSectionRenderer",
                     "contents",
+                    0,
                     "playlistVideoListRenderer",
                     "contents",
                 ],
             )
+            if not videorenderer_val or not isinstance(videorenderer_val, list):
+                # Fallback for direct itemSectionRenderer contents or lockupViewModel list
+                videorenderer_val = self._get_value(
+                    self.responseSource,
+                    [
+                        "contents",
+                        "twoColumnBrowseResultsRenderer",
+                        "tabs",
+                        0,
+                        "tabRenderer",
+                        "content",
+                        "sectionListRenderer",
+                        "contents",
+                        0,
+                        "itemSectionRenderer",
+                        "contents",
+                    ],
+                )
+
             videorenderer: List[Any] = (
                 videorenderer_val if isinstance(videorenderer_val, list) else []
             )
             videos: List[Dict[str, Any]] = []
             for video in videorenderer:
                 try:
-                    video = video["playlistVideoRenderer"]
-                    j = {
-                        "id": self._get_value(video, ["videoId"]),
-                        "thumbnails": self._get_value(
-                            video, ["thumbnail", "thumbnails"]
-                        ),
-                        "title": self._get_value(video, ["title", "runs", 0, "text"]),
-                        "channel": {
-                            "name": self._get_value(
-                                video, ["shortBylineText", "runs", 0, "text"]
+                    if not isinstance(video, dict):
+                        continue
+                    if "playlistVideoRenderer" in video:
+                        video_data = video["playlistVideoRenderer"]
+                        j = {
+                            "id": self._get_value(video_data, ["videoId"]),
+                            "thumbnails": self._get_value(
+                                video_data, ["thumbnail", "thumbnails"]
                             ),
-                            "id": self._get_value(
-                                video,
-                                [
-                                    "shortBylineText",
-                                    "runs",
-                                    0,
-                                    "navigationEndpoint",
-                                    "browseEndpoint",
-                                    "browseId",
-                                ],
-                            ),
-                            "link": self._get_value(
-                                video,
-                                [
-                                    "shortBylineText",
-                                    "runs",
-                                    0,
-                                    "navigationEndpoint",
-                                    "browseEndpoint",
-                                    "canonicalBaseUrl",
-                                ],
-                            ),
-                        },
-                        "duration": self._get_value(
-                            video, ["lengthText", "simpleText"]
-                        ),
-                        "accessibility": {
-                            "title": self._get_value(
-                                video,
-                                [
-                                    "title",
-                                    "accessibility",
-                                    "accessibilityData",
-                                    "label",
-                                ],
-                            ),
+                            "title": self._get_value(video_data, ["title", "runs", 0, "text"]),
+                            "channel": {
+                                "name": self._get_value(
+                                    video_data, ["shortBylineText", "runs", 0, "text"]
+                                ),
+                                "id": self._get_value(
+                                    video_data,
+                                    [
+                                        "shortBylineText",
+                                        "runs",
+                                        0,
+                                        "navigationEndpoint",
+                                        "browseEndpoint",
+                                        "browseId",
+                                    ],
+                                ),
+                                "link": self._get_value(
+                                    video_data,
+                                    [
+                                        "shortBylineText",
+                                        "runs",
+                                        0,
+                                        "navigationEndpoint",
+                                        "browseEndpoint",
+                                        "canonicalBaseUrl",
+                                    ],
+                                ),
+                            },
                             "duration": self._get_value(
-                                video,
-                                [
-                                    "lengthText",
-                                    "accessibility",
-                                    "accessibilityData",
-                                    "label",
-                                ],
+                                video_data, ["lengthText", "simpleText"]
                             ),
-                        },
-                        "link": "https://www.youtube.com"
-                        + str(
+                            "accessibility": {
+                                "title": self._get_value(
+                                    video_data,
+                                    [
+                                        "title",
+                                        "accessibility",
+                                        "accessibilityData",
+                                        "label",
+                                    ],
+                                ),
+                                "duration": self._get_value(
+                                    video_data,
+                                    [
+                                        "lengthText",
+                                        "accessibility",
+                                        "accessibilityData",
+                                        "label",
+                                    ],
+                                ),
+                            },
+                            "link": "https://www.youtube.com"
+                            + str(
+                                self._get_value(
+                                    video_data,
+                                    [
+                                        "navigationEndpoint",
+                                        "commandMetadata",
+                                        "webCommandMetadata",
+                                        "url",
+                                    ],
+                                )
+                            ),
+                            "isPlayable": self._get_value(video_data, ["isPlayable"]),
+                        }
+                        videos.append(j)
+                    elif "lockupViewModel" in video:
+                        lockup = video["lockupViewModel"]
+                        vid = self._get_value(lockup, ["contentId"])
+                        meta_rows = (
                             self._get_value(
-                                video,
+                                lockup,
                                 [
-                                    "navigationEndpoint",
-                                    "commandMetadata",
-                                    "webCommandMetadata",
-                                    "url",
+                                    "metadata",
+                                    "lockupMetadataViewModel",
+                                    "metadata",
+                                    "contentMetadataViewModel",
+                                    "metadataRows",
                                 ],
                             )
-                        ),
-                        "isPlayable": self._get_value(video, ["isPlayable"]),
-                    }
-                    videos.append(j)
+                            or []
+                        )
+                        channel_name = None
+                        channel_id = None
+                        if meta_rows and isinstance(meta_rows, list) and len(meta_rows) > 0:
+                            parts = (
+                                self._get_value(meta_rows[0], ["metadataParts"]) or []
+                            )
+                            if parts and isinstance(parts, list):
+                                channel_name = self._get_value(
+                                    parts[0], ["text", "content"]
+                                )
+                                channel_id = self._get_value(
+                                    parts[0],
+                                    [
+                                        "text",
+                                        "commandRuns",
+                                        0,
+                                        "onTap",
+                                        "innertubeCommand",
+                                        "browseEndpoint",
+                                        "browseId",
+                                    ],
+                                )
+
+                        duration = None
+                        overlays = (
+                            self._get_value(
+                                lockup,
+                                ["contentImage", "thumbnailViewModel", "overlays"],
+                            )
+                            or []
+                        )
+                        if overlays and isinstance(overlays, list):
+                            for overlay in overlays:
+                                badge = self._get_value(
+                                    overlay,
+                                    [
+                                        "thumbnailBottomOverlayViewModel",
+                                        "badges",
+                                        0,
+                                        "thumbnailBadgeViewModel",
+                                        "text",
+                                    ],
+                                )
+                                if badge:
+                                    duration = badge
+                                    break
+
+                        j = {
+                            "id": vid,
+                            "thumbnails": self._get_value(
+                                lockup,
+                                ["contentImage", "thumbnailViewModel", "image", "sources"],
+                            ),
+                            "title": self._get_value(
+                                lockup,
+                                ["metadata", "lockupMetadataViewModel", "title", "content"],
+                            ),
+                            "channel": {
+                                "name": channel_name,
+                                "id": channel_id,
+                                "link": (
+                                    f"https://www.youtube.com/channel/{channel_id}"
+                                    if channel_id
+                                    else None
+                                ),
+                            },
+                            "duration": duration,
+                            "accessibility": {
+                                "title": self._get_value(
+                                    lockup,
+                                    [
+                                        "rendererContext",
+                                        "accessibilityContext",
+                                        "label",
+                                    ],
+                                ),
+                                "duration": None,
+                            },
+                            "link": f"https://www.youtube.com/watch?v={vid}",
+                            "isPlayable": True,
+                        }
+                        videos.append(j)
                 except Exception:
                     pass
 

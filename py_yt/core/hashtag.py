@@ -47,7 +47,7 @@ class HashtagCore(RequestCore, ComponentHandler):
             return json.dumps({"result": self.resultComponents}, indent=4)
         return {"result": self.resultComponents}
 
-    async def next(self) -> bool:
+    async def next(self) -> Dict[str, Any]:
         """Gets the videos from the next page."""
         self.response = None
         self.resultComponents = []
@@ -56,7 +56,7 @@ class HashtagCore(RequestCore, ComponentHandler):
         if self.continuationKey or self.params:
             await self._make_request()
             self._get_components()
-        return bool(self.resultComponents)
+        return {"result": self.resultComponents}
 
     async def _get_params(self) -> None:
         self.url = self._build_url("search")

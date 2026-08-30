@@ -193,7 +193,7 @@ class ChannelSearch(ChannelSearchCore):
     def __init__(
         self,
         query: str,
-        browse_id: str,
+        browse_id: Optional[str] = None,
         language: str = "en",
         region: str = "US",
         search_preferences: str = "EgZzZWFyY2jyBgQKAloA",

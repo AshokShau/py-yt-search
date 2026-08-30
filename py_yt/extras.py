@@ -152,7 +152,7 @@ class Hashtag(HashtagCore):
             proxy=proxy,
         )
 
-    async def next(self) -> bool:  # type: ignore[override]
+    async def next(self) -> Dict[str, Any]:
         return await super().next()
 
 

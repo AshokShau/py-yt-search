@@ -20,8 +20,8 @@ class ChannelSearchCore(RequestCore, ComponentHandler):
         language: str,
         region: str,
         search_preferences: str,
-        browse_id: str,
-        timeout: float,
+        browse_id: Optional[str] = None,
+        timeout: float = 7.0,
         max_retries: int = 2,
         proxy: Optional[str] = None,
         visitor_data: Optional[str] = None,
@@ -39,12 +39,23 @@ class ChannelSearchCore(RequestCore, ComponentHandler):
         self.query: str = query
         self.language: str = language
         self.region: str = region
-        self.browseId: str = browse_id
+        self.browseId: Optional[str] = self._extract_channel_id(browse_id) if browse_id else None
         self.searchPreferences: str = search_preferences
         self.continuationKey: Optional[str] = None
         self.timeout: float = timeout
 
+    def _extract_channel_id(self, browse_id_or_url: str) -> str:
+        clean = browse_id_or_url.strip()
+        if "youtube.com/channel/" in clean:
+            return clean.split("youtube.com/channel/")[1].split("/")[0].split("?")[0]
+        return clean
+
     async def next(self) -> Dict[str, Any]:
+        if not self.browseId:
+            await self._resolve_browse_id()
+        if not self.browseId:
+            return {"result": []}
+
         await self._make_request()
         self._parse_channel_search_source()
         raw_elements: List[Any] = (
@@ -93,6 +104,25 @@ class ChannelSearchCore(RequestCore, ComponentHandler):
                 "Could not parse channel search YouTube response", exc_info=True
             )
             raise Exception("ERROR: Could not parse YouTube response.") from e
+
+    async def _resolve_browse_id(self) -> None:
+        from py_yt.core.search import SearchCore
+        from py_yt.core.constants import SearchMode
+        search = SearchCore(
+            self.query,
+            1,
+            self.language,
+            self.region,
+            SearchMode.channels,
+            self.timeout,
+            proxy=getattr(self, "proxy", None),
+        )
+        res = await search.next()
+        results = res.get("result", [])
+        if results and isinstance(results, list):
+            first_channel = results[0]
+            if isinstance(first_channel, dict) and first_channel.get("id"):
+                self.browseId = first_channel["id"]
 
     def _get_request_body(self) -> None:
         self.url = self._build_url("browse")
