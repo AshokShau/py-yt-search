@@ -1,20 +1,22 @@
-import os
-import logging
-import json
 import asyncio
+import copy
 import inspect
+import json
+import logging
+import os
+from typing import Any, Callable, Dict, Mapping, Optional, Tuple
 from urllib.parse import urlencode
 import aiohttp
 
-from py_yt.core.constants import userAgent, CLIENT_PROFILES, searchKey
+from py_yt.core.constants import CLIENT_PROFILES, requestPayload, searchKey, userAgent
 from py_yt.core.session import (
     get_session,
-    get_session_visitor_data,
-    set_session_visitor_data,
     get_session_po_token,
-    set_session_po_token,
     get_session_po_token_verifier,
+    get_session_visitor_data,
     get_token_lock,
+    set_session_po_token,
+    set_session_visitor_data,
 )
 
 logger = logging.getLogger(__name__)
@@ -27,28 +29,61 @@ class RequestCore:
         self,
         timeout: float = 7.0,
         max_retries: int = 2,
-        proxy: str | None = None,
-        visitor_data: str | None = None,
-        po_token: str | None = None,
-        po_token_verifier=None,
-    ):
-        self.url: str | None = None
-        self.data: dict | None = None
+        proxy: Optional[str] = None,
+        visitor_data: Optional[str] = None,
+        po_token: Optional[str] = None,
+        po_token_verifier: Optional[Callable[..., Any]] = None,
+    ) -> None:
+        self.url: Optional[str] = None
+        self.data: Optional[Dict[str, Any]] = None
         self.timeout: float = timeout
         self.max_retries: int = max_retries
-        self.proxy_url: str | None = proxy or os.environ.get("PROXY_URL")
-        self.visitor_data: str | None = visitor_data
-        self.po_token: str | None = po_token
-        self.po_token_verifier = po_token_verifier
+        self.proxy_url: Optional[str] = proxy or os.environ.get("PROXY_URL")
+        self.visitor_data: Optional[str] = visitor_data
+        self.po_token: Optional[str] = po_token
+        self.po_token_verifier: Optional[Callable[..., Any]] = po_token_verifier
 
-    async def _fetch_automatic_visitor_data(self) -> str | None:
+    @staticmethod
+    def _build_url(endpoint: str, extra_params: Optional[Dict[str, str]] = None) -> str:
+        """Helper to construct YouTube InnerTube endpoint URLs."""
+        params: Dict[str, str] = {"key": searchKey}
+        if extra_params:
+            params.update(extra_params)
+        return f"https://www.youtube.com/youtubei/v1/{endpoint}?{urlencode(params)}"
+
+    @staticmethod
+    def _build_payload(
+        language: str = "en",
+        region: str = "US",
+        client_name: str = "WEB",
+        client_version: str = "2.20260820.08.00",
+        continuation: Optional[str] = None,
+        params: Optional[str] = None,
+        **extra_fields: Any,
+    ) -> Dict[str, Any]:
+        """Helper to build standardized InnerTube request payloads."""
+        payload: Dict[str, Any] = copy.deepcopy(requestPayload)
+        client_dict = payload["context"]["client"]
+        client_dict["hl"] = language
+        client_dict["gl"] = region
+        client_dict["clientName"] = client_name
+        client_dict["clientVersion"] = client_version
+
+        if params:
+            payload["params"] = params
+        if continuation:
+            payload["continuation"] = continuation
+
+        for key, val in extra_fields.items():
+            if val is not None:
+                payload[key] = val
+
+        return payload
+
+    async def _fetch_automatic_visitor_data(self) -> Optional[str]:
         try:
             session = await get_session()
-            url = (
-                "https://www.youtube.com/youtubei/v1/visitor_id"
-                + "?"
-                + urlencode({"key": searchKey})
-            )
+            url = self._build_url("visitor_id")
             payload = {
                 "context": {
                     "client": {
@@ -72,7 +107,7 @@ class RequestCore:
             logger.debug(f"Automatic visitor_id fetch failed: {e}")
         return None
 
-    async def _resolve_tokens(self) -> tuple[str | None, str | None]:
+    async def _resolve_tokens(self) -> Tuple[Optional[str], Optional[str]]:
         visitor_data = self.visitor_data or get_session_visitor_data()
         po_token = self.po_token or get_session_po_token()
         verifier = self.po_token_verifier or get_session_po_token_verifier()
@@ -103,7 +138,11 @@ class RequestCore:
                                 po_token, visitor_data = a, b
                     elif isinstance(res, dict):
                         po_token = res.get("po_token") or res.get("poToken") or po_token
-                        visitor_data = res.get("visitor_data") or res.get("visitorData") or visitor_data
+                        visitor_data = (
+                            res.get("visitor_data")
+                            or res.get("visitorData")
+                            or visitor_data
+                        )
                     elif isinstance(res, str):
                         po_token = res
                 except Exception as e:
@@ -112,8 +151,11 @@ class RequestCore:
             if not po_token:
                 try:
                     from py_yt.botGuard.bot_guard import generate_po_token
+
                     video_id = getattr(self, "video_id", None) or "dQw4w9WgXcQ"
-                    gen_pot = await asyncio.to_thread(generate_po_token, video_id=video_id)
+                    gen_pot = await asyncio.to_thread(
+                        generate_po_token, video_id=video_id
+                    )
                     if gen_pot and isinstance(gen_pot, str):
                         po_token = gen_pot
                 except Exception as e:
@@ -132,15 +174,17 @@ class RequestCore:
                 set_session_po_token(po_token)
             return visitor_data, po_token
 
-    def _prepare_request_for_profile(self, profile_name: str) -> dict[str, str]:
+    def _prepare_request_for_profile(self, profile_name: str) -> Dict[str, str]:
         profile = CLIENT_PROFILES.get(profile_name, CLIENT_PROFILES["WEB"])
-        headers = {
+        headers: Dict[str, str] = {
             "User-Agent": profile.get("userAgent", userAgent),
             "Origin": "https://www.youtube.com",
             "Referer": "https://www.youtube.com/",
             "Accept-Language": "en-US,en;q=0.9",
             "X-YouTube-Client-Name": profile.get("clientCode", "1"),
-            "X-YouTube-Client-Version": profile.get("clientVersion", "2.20260820.08.00"),
+            "X-YouTube-Client-Version": profile.get(
+                "clientVersion", "2.20260820.08.00"
+            ),
         }
 
         if self.visitor_data:
@@ -180,35 +224,43 @@ class RequestCore:
 
         return headers
 
-    def _get_headers(self) -> dict[str, str]:
+    def _get_headers(self) -> Dict[str, str]:
         if isinstance(self.data, dict):
-            client_name = self.data.get("context", {}).get("client", {}).get("clientName", "WEB")
+            client_name = (
+                self.data.get("context", {}).get("client", {}).get("clientName", "WEB")
+            )
             return self._prepare_request_for_profile(client_name)
         return self._prepare_request_for_profile("WEB")
 
-    def _extract_visitor_data_from_response(self, response_bytes: bytes, response_headers=None):
+    def _extract_visitor_data_from_response(
+        self,
+        response_bytes: bytes,
+        response_headers: Optional[Mapping[str, str]] = None,
+    ) -> None:
         try:
             if response_headers and "X-Goog-Visitor-Id" in response_headers:
-                vd = response_headers["X-Goog-Visitor-Id"]
-                if vd:
-                    self.visitor_data = vd
-                    set_session_visitor_data(vd)
+                vd_hdr = response_headers["X-Goog-Visitor-Id"]
+                if vd_hdr:
+                    self.visitor_data = vd_hdr
+                    set_session_visitor_data(vd_hdr)
                     return
             data = json.loads(response_bytes.decode("utf-8", errors="ignore"))
-            vd = None
+            vd: Optional[str] = None
             if isinstance(data, dict):
-                vd = (
+                extracted_vd = (
                     data.get("responseContext", {}).get("visitorData")
                     or data.get("responseHeader", {}).get("visitorData")
                     or data.get("visitorData")
                 )
-            if vd and isinstance(vd, str):
+                if isinstance(extracted_vd, str):
+                    vd = extracted_vd
+            if vd:
                 self.visitor_data = vd
                 set_session_visitor_data(vd)
         except Exception:
             pass
 
-    async def postRequest(self) -> aiohttp.ClientResponse | None:
+    async def post_request(self) -> Optional[aiohttp.ClientResponse]:
         """Sends an asynchronous POST request."""
         if not self.url:
             raise ValueError("URL must be set before making a request.")
@@ -239,32 +291,32 @@ class RequestCore:
                         response.release()
                     raise
             except aiohttp.ClientResponseError as e:
-                is_last_retry = (i == self.max_retries)
+                is_last_retry = i == self.max_retries
                 log_fn = logger.error if is_last_retry else logger.debug
                 log_fn(
-                    f"HTTP error during POST request (attempt {i+1}/{self.max_retries+1}, profile={profile_name})",
+                    f"HTTP error during POST request (attempt {i + 1}/{self.max_retries + 1}, profile={profile_name})",
                     extra={
                         "status_code": e.status,
                         "response_text": e.message,
-                        "url": self.url
+                        "url": self.url,
                     },
                     exc_info=is_last_retry,
                 )
-            except (aiohttp.ClientError, asyncio.TimeoutError) as e:
-                is_last_retry = (i == self.max_retries)
+            except (aiohttp.ClientError, asyncio.TimeoutError):
+                is_last_retry = i == self.max_retries
                 log_fn = logger.error if is_last_retry else logger.debug
                 log_fn(
-                    f"Request error during POST request (attempt {i+1}/{self.max_retries+1}, profile={profile_name})",
+                    f"Request error during POST request (attempt {i + 1}/{self.max_retries + 1}, profile={profile_name})",
                     extra={
                         "request_url": self.url,
                     },
                     exc_info=is_last_retry,
                 )
             if i < self.max_retries:
-                await asyncio.sleep(2 ** i)
+                await asyncio.sleep(2**i)
         return None
 
-    async def getRequest(self) -> aiohttp.ClientResponse | None:
+    async def get_request(self) -> Optional[aiohttp.ClientResponse]:
         """Sends an asynchronous GET request."""
         if not self.url:
             raise ValueError("URL must be set before making a request.")
@@ -297,27 +349,27 @@ class RequestCore:
                         response.release()
                     raise
             except aiohttp.ClientResponseError as e:
-                is_last_retry = (i == self.max_retries)
+                is_last_retry = i == self.max_retries
                 log_fn = logger.error if is_last_retry else logger.debug
                 log_fn(
-                    f"HTTP error during GET request (attempt {i+1}/{self.max_retries+1}, profile={profile_name})",
+                    f"HTTP error during GET request (attempt {i + 1}/{self.max_retries + 1}, profile={profile_name})",
                     extra={
                         "status_code": e.status,
                         "response_text": e.message,
-                        "url": self.url
+                        "url": self.url,
                     },
                     exc_info=is_last_retry,
                 )
-            except (aiohttp.ClientError, asyncio.TimeoutError) as e:
-                is_last_retry = (i == self.max_retries)
+            except (aiohttp.ClientError, asyncio.TimeoutError):
+                is_last_retry = i == self.max_retries
                 log_fn = logger.error if is_last_retry else logger.debug
                 log_fn(
-                    f"Request error during GET request (attempt {i+1}/{self.max_retries+1}, profile={profile_name})",
+                    f"Request error during GET request (attempt {i + 1}/{self.max_retries + 1}, profile={profile_name})",
                     extra={
                         "request_url": self.url,
                     },
                     exc_info=is_last_retry,
                 )
             if i < self.max_retries:
-                await asyncio.sleep(2 ** i)
+                await asyncio.sleep(2**i)
         return None

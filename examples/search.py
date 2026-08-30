@@ -1,6 +1,7 @@
 import asyncio
 from py_yt import Search, VideosSearch, ChannelsSearch, PlaylistsSearch, close_session
 
+
 async def main():
     """
     Searches for all types of results like videos, channels & playlists in YouTube.
@@ -13,20 +14,20 @@ async def main():
     """
     Searches only for videos in YouTube.
     """
-    videosSearch = VideosSearch(
+    videos_search = VideosSearch(
         "NoCopyrightSounds", limit=10, language="en", region="US"
     )
-    videosResult = await videosSearch.next()
-    print(videosResult)
+    videos_result = await videos_search.next()
+    print(videos_result)
 
     """
     Searches only for channels in YouTube.
     """
-    channelsSearch = ChannelsSearch(
+    channels_search = ChannelsSearch(
         "NoCopyrightSounds", limit=1, language="en", region="US"
     )
-    channelsResult = await channelsSearch.next()
-    print(channelsResult)
+    channels_result = await channels_search.next()
+    print(channels_result)
 
     """
     Searches only for playlists in YouTube.
@@ -48,23 +49,24 @@ async def main():
     """ Displaying the result """
     for video in result_page1.get("result", []):
         index += 1
-        print(f'{index} - {video.get("title", "No Title")}')
-        
+        print(f"{index} - {video.get('title', 'No Title')}")
+
     """ Getting result on 2nd page """
     result_page2 = await _search_pages.next()
     """ Displaying the result """
     for video in result_page2.get("result", []):
         index += 1
-        print(f'{index} - {video.get("title", "No Title")}')
-        
+        print(f"{index} - {video.get('title', 'No Title')}")
+
     """ Getting result on 3rd page """
     result_page3 = await _search_pages.next()
     """ Displaying the result """
     for video in result_page3.get("result", []):
         index += 1
-        print(f'{index} - {video.get("title", "No Title")}')
+        print(f"{index} - {video.get('title', 'No Title')}")
 
     await close_session()
+
 
 if __name__ == "__main__":
     asyncio.run(main())

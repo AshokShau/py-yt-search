@@ -1,49 +1,52 @@
-import copy
 import logging
-from urllib.parse import urlencode
+from typing import Any, Dict, List, Optional
+import aiohttp
 
-from py_yt.core.componenthandler import getVideoId, getValue
-from py_yt.core.constants import searchKey, requestPayload
+from py_yt.core.componenthandler import get_value, get_video_id
 from py_yt.core.requests import RequestCore
 
 logger = logging.getLogger(__name__)
 
 
 class TranscriptCore(RequestCore):
-    def __init__(self, videoLink: str, key: str, proxy: str | None = None):
+    def __init__(
+        self,
+        videoLink: str,
+        key: Optional[str] = None,
+        proxy: Optional[str] = None,
+    ) -> None:
         super().__init__(proxy=proxy)
-        self.videoLink = videoLink
-        self.key = key
-        self.result = {"segments": [], "languages": []}
+        self.videoLink: str = videoLink
+        self.key: str = key or ""
+        self.result: Dict[str, Any] = {"segments": [], "languages": []}
 
-    def prepare_params_request(self):
-        self.url = (
-            "https://www.youtube.com/youtubei/v1/next"
-            + "?"
-            + urlencode({"key": searchKey, "prettyPrint": "false"})
+    def prepare_params_request(self) -> None:
+        self.url = self._build_url("next", {"prettyPrint": "false"})
+        self.data = self._build_payload(
+            videoId=get_video_id(self.videoLink),
         )
-        self.data = copy.deepcopy(requestPayload)
-        self.data["videoId"] = getVideoId(self.videoLink)
 
-    async def extract_continuation_key(self, r):
+    async def extract_continuation_key(self, r: aiohttp.ClientResponse) -> bool:
         try:
             j = await r.json()
         except Exception:
             self.result = {"segments": [], "languages": []}
             return True
-        panels = getValue(j, ["engagementPanels"])
-        if not panels:
+        panels = get_value(j, ["engagementPanels"])
+        if not panels or not isinstance(panels, list):
             self.result = {"segments": [], "languages": []}
             return True
         key = ""
         for panel in panels:
-            panel = panel["engagementPanelSectionListRenderer"]
+            if not isinstance(panel, dict):
+                continue
+            section = panel.get("engagementPanelSectionListRenderer", {})
             if (
-                getValue(panel, ["targetId"])
+                get_value(section, ["targetId"])
                 == "engagement-panel-searchable-transcript"
             ):
-                key = getValue(
-                    panel,
+                key = get_value(
+                    section,
                     [
                         "content",
                         "continuationItemRenderer",
@@ -52,24 +55,21 @@ class TranscriptCore(RequestCore):
                         "params",
                     ],
                 )
-        if key == "" or not key:
+        if not key:
             self.result = {"segments": [], "languages": []}
             return True
-        self.key = key
+        self.key = str(key)
         return False
 
-    def prepare_transcript_request(self):
-        self.url = (
-            "https://www.youtube.com/youtubei/v1/get_transcript"
-            + "?"
-            + urlencode({"key": searchKey, "prettyPrint": "false"})
+    def prepare_transcript_request(self) -> None:
+        self.url = self._build_url("get_transcript", {"prettyPrint": "false"})
+        self.data = self._build_payload(
+            params=self.key,
         )
-        self.data = copy.deepcopy(requestPayload)
-        self.data["params"] = self.key
 
-    def extract_transcript(self):
-        response = self.data
-        transcripts = getValue(
+    def extract_transcript(self) -> None:
+        response = self.data if isinstance(self.data, dict) else {}
+        transcripts = get_value(
             response,
             [
                 "actions",
@@ -84,22 +84,22 @@ class TranscriptCore(RequestCore):
                 "initialSegments",
             ],
         )
-        segments = []
-        languages = []
-        if transcripts:
+        segments: List[Dict[str, Any]] = []
+        languages: List[Dict[str, Any]] = []
+        if transcripts and isinstance(transcripts, list):
             for segment in transcripts:
-                segment = getValue(segment, ["transcriptSegmentRenderer"])
-                if segment:
+                seg_renderer = get_value(segment, ["transcriptSegmentRenderer"])
+                if seg_renderer and isinstance(seg_renderer, dict):
                     j = {
-                        "startMs": getValue(segment, ["startMs"]),
-                        "endMs": getValue(segment, ["endMs"]),
-                        "text": getValue(segment, ["snippet", "runs", 0, "text"]),
-                        "startTime": getValue(
-                            segment, ["startTimeText", "simpleText"]
+                        "startMs": get_value(seg_renderer, ["startMs"]),
+                        "endMs": get_value(seg_renderer, ["endMs"]),
+                        "text": get_value(seg_renderer, ["snippet", "runs", 0, "text"]),
+                        "startTime": get_value(
+                            seg_renderer, ["startTimeText", "simpleText"]
                         ),
                     }
                     segments.append(j)
-        langs = getValue(
+        langs = get_value(
             response,
             [
                 "actions",
@@ -116,34 +116,38 @@ class TranscriptCore(RequestCore):
                 "subMenuItems",
             ],
         )
-        if langs:
+        if langs and isinstance(langs, list):
             for language in langs:
-                j = {
-                    "params": getValue(
-                        language,
-                        ["continuation", "reloadContinuationData", "continuation"],
-                    ),
-                    "selected": getValue(language, ["selected"]),
-                    "title": getValue(language, ["title"]),
-                }
-                languages.append(j)
+                if isinstance(language, dict):
+                    j = {
+                        "params": get_value(
+                            language,
+                            ["continuation", "reloadContinuationData", "continuation"],
+                        ),
+                        "selected": get_value(language, ["selected"]),
+                        "title": get_value(language, ["title"]),
+                    }
+                    languages.append(j)
         self.result = {"segments": segments, "languages": languages}
 
-    async def create(self):
+    async def create(self) -> None:
         if not self.key:
             self.prepare_params_request()
-            r = await self.postRequest()
+            r = await self.post_request()
             if not r:
                 return
             end = await self.extract_continuation_key(r)
             if end:
                 return
         self.prepare_transcript_request()
-        response = await self.postRequest()
+        response = await self.post_request()
         if response:
             try:
                 self.data = await response.json()
-            except Exception as e:
-                logger.error("Could not parse YouTube response inside extract_transcript.", exc_info=True)
+            except Exception:
+                logger.error(
+                    "Could not parse YouTube response inside extract_transcript.",
+                    exc_info=True,
+                )
                 return
             self.extract_transcript()

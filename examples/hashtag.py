@@ -1,6 +1,7 @@
 import asyncio
 from py_yt import Hashtag, close_session
 
+
 async def main():
     """
     Getting videos by hashtag.
@@ -10,6 +11,7 @@ async def main():
     print(result)
 
     await close_session()
+
 
 if __name__ == "__main__":
     asyncio.run(main())

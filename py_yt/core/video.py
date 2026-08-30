@@ -1,13 +1,18 @@
 import copy
 import json
-from typing import Union
-from urllib.parse import urlencode, urlparse, parse_qs
+from typing import Any, Dict, Optional, Union
+from urllib.parse import parse_qs, urlparse
 
-from py_yt.core.componenthandler import getVideoId, getValue
-from py_yt.core.constants import searchKey, ResultMode
+from py_yt.core.componenthandler import (
+    build_channel_url,
+    build_watch_url,
+    get_value,
+    get_video_id,
+)
+from py_yt.core.constants import ResultMode
 from py_yt.core.requests import RequestCore
 
-CLIENTS = {
+CLIENTS: Dict[str, Dict[str, Any]] = {
     "MWEB": {
         "context": {
             "client": {"clientName": "WEB", "clientVersion": "2.20260820.08.00"}
@@ -46,10 +51,7 @@ CLIENTS = {
 
 
 def _get_cleaned_url(video_link: str) -> str:
-    """
-    Cleans the YouTube video link by removing any extra parameters,
-    ensuring only the video ID is present.
-    """
+    """Cleans the YouTube video link by removing any extra parameters, ensuring only the video ID is present."""
     parsed_url = urlparse(video_link)
     video_id = parse_qs(parsed_url.query).get("v")
     if video_id:
@@ -58,48 +60,50 @@ def _get_cleaned_url(video_link: str) -> str:
 
 
 class VideoCore(RequestCore):
+    response: Optional[str] = None
+    responseSource: Optional[Dict[str, Any]] = None
+    HTMLresponseSource: Optional[Dict[str, Any]] = None
+    result: Optional[Union[Dict[str, Any], str]] = None
+    _video_component: Dict[str, Any] = {}
+
     def __init__(
         self,
         video_link: str,
-        component_mode: str,
+        component_mode: Optional[str],
         result_mode: int,
-        timeout: int,
+        timeout: float,
         enable_html: bool,
         overrided_client: str = "ANDROID",
-        proxy: str | None = None,
-    ):
+        proxy: Optional[str] = None,
+    ) -> None:
         super().__init__(timeout=timeout, proxy=proxy)
-        self.timeout = timeout
-        self.resultMode = result_mode
-        self.componentMode = component_mode
-        self.videoLink = _get_cleaned_url(video_link)
-        self.enableHTML = enable_html
-        self.overridedClient = overrided_client
+        self.timeout: float = timeout
+        self.resultMode: int = result_mode
+        self.componentMode: Optional[str] = component_mode
+        self.videoLink: str = _get_cleaned_url(video_link)
+        self.enableHTML: bool = enable_html
+        self.overridedClient: str = overrided_client
 
-    def post_request_processing(self):
-        if hasattr(self, "response"):
-            self.__parseSource()
-        self.__getVideoComponent(self.componentMode)
-        self.result = self.__videoComponent
+    def post_request_processing(self) -> None:
+        if self.response is not None:
+            self._parse_source()
+        self._get_video_component(self.componentMode)
+        self.result = self._video_component
 
-    def prepare_innertube_request(self):
-        self.url = (
-            "https://www.youtube.com/youtubei/v1/player"
-            + "?"
-            + urlencode(
-                {
-                    "key": searchKey,
-                    "contentCheckOk": "true",
-                    "racyCheckOk": "true",
-                    "videoId": getVideoId(self.videoLink),
-                }
-            )
+    def prepare_innertube_request(self) -> None:
+        self.url = self._build_url(
+            "player",
+            {
+                "contentCheckOk": "true",
+                "racyCheckOk": "true",
+                "videoId": get_video_id(self.videoLink),
+            },
         )
-        self.data = copy.deepcopy(CLIENTS[self.overridedClient])
+        self.data = copy.deepcopy(CLIENTS.get(self.overridedClient, CLIENTS["ANDROID"]))
 
-    async def create(self):
+    async def create(self) -> None:
         self.prepare_innertube_request()
-        response = await self.postRequest()
+        response = await self.post_request()
         if response is None:
             video_link = getattr(self, "videoLink", None)
             request_params = getattr(self, "data", None)
@@ -114,118 +118,112 @@ class VideoCore(RequestCore):
         else:
             raise Exception("ERROR: Invalid status code.")
 
-    def prepare_html_request(self):
-        self.url = (
-            "https://www.youtube.com/youtubei/v1/player"
-            + "?"
-            + urlencode(
-                {
-                    "key": searchKey,
-                    "contentCheckOk": "true",
-                    "racyCheckOk": "true",
-                    "videoId": getVideoId(self.videoLink),
-                }
-            )
+    def prepare_html_request(self) -> None:
+        self.url = self._build_url(
+            "player",
+            {
+                "contentCheckOk": "true",
+                "racyCheckOk": "true",
+                "videoId": get_video_id(self.videoLink),
+            },
         )
         self.data = CLIENTS["MWEB"]
 
-    async def html_create(self):
+    async def html_create(self) -> None:
         self.prepare_html_request()
-        response = await self.postRequest()
+        response = await self.post_request()
+        if response is None:
+            raise Exception("ERROR: Could not fetch HTML response.")
         self.HTMLresponseSource = await response.json()
 
-    def __parseSource(self) -> None:
+    def _parse_source(self) -> None:
         try:
-            self.responseSource = json.loads(self.response)
+            self.responseSource = json.loads(self.response or "{}")
         except Exception as e:
-            raise Exception("ERROR: Could not parse YouTube response." + str(e))
+            raise Exception("ERROR: Could not parse YouTube response.") from e
 
-    def __result(self, mode: int) -> Union[dict, str]:
+    def _result(self, mode: int) -> Union[Dict[str, Any], str]:
         if mode == ResultMode.dict:
-            return self.__videoComponent
-        elif mode == ResultMode.json:
-            return json.dumps(self.__videoComponent, indent=4)
+            return self._video_component
+        return json.dumps(self._video_component, indent=4)
 
-    def __getVideoComponent(self, mode: str) -> None:
-        videoComponent = {}
+    def _get_video_component(self, mode: Optional[str]) -> None:
+        videoComponent: Dict[str, Any] = {}
         if mode in ["getInfo", None]:
-            responseSource = getattr(self, "responseSource", None)
-            if self.enableHTML:
+            responseSource = self.responseSource
+            if self.enableHTML and self.HTMLresponseSource:
                 responseSource = self.HTMLresponseSource
-            component = {
-                "id": getValue(responseSource, ["videoDetails", "videoId"]),
-                "title": getValue(responseSource, ["videoDetails", "title"]),
+            vid: Optional[str] = get_value(responseSource, ["videoDetails", "videoId"])
+            cid: Optional[str] = get_value(responseSource, ["videoDetails", "channelId"])
+            component: Dict[str, Any] = {
+                "id": vid,
+                "title": get_value(responseSource, ["videoDetails", "title"]),
                 "duration": {
-                    "secondsText": getValue(
+                    "secondsText": get_value(
                         responseSource, ["videoDetails", "lengthSeconds"]
                     ),
                 },
                 "viewCount": {
-                    "text": getValue(responseSource, ["videoDetails", "viewCount"])
+                    "text": get_value(responseSource, ["videoDetails", "viewCount"])
                 },
-                "thumbnails": getValue(
+                "thumbnails": get_value(
                     responseSource, ["videoDetails", "thumbnail", "thumbnails"]
                 ),
-                "description": getValue(
+                "description": get_value(
                     responseSource, ["videoDetails", "shortDescription"]
                 ),
                 "channel": {
-                    "name": getValue(responseSource, ["videoDetails", "author"]),
-                    "id": getValue(responseSource, ["videoDetails", "channelId"]),
+                    "name": get_value(responseSource, ["videoDetails", "author"]),
+                    "id": cid,
+                    "link": build_channel_url(cid),
                 },
-                "allowRatings": getValue(
+                "allowRatings": get_value(
                     responseSource, ["videoDetails", "allowRatings"]
                 ),
-                "averageRating": getValue(
+                "averageRating": get_value(
                     responseSource, ["videoDetails", "averageRating"]
                 ),
-                "keywords": getValue(responseSource, ["videoDetails", "keywords"]),
-                "isLiveContent": getValue(
+                "keywords": get_value(responseSource, ["videoDetails", "keywords"]),
+                "isLiveContent": get_value(
                     responseSource, ["videoDetails", "isLiveContent"]
                 ),
-                "publishDate": getValue(
+                "publishDate": get_value(
                     responseSource,
                     ["microformat", "playerMicroformatRenderer", "publishDate"],
                 ),
-                "uploadDate": getValue(
+                "uploadDate": get_value(
                     responseSource,
                     ["microformat", "playerMicroformatRenderer", "uploadDate"],
                 ),
-                "isFamilySafe": getValue(
+                "isFamilySafe": get_value(
                     responseSource,
                     ["microformat", "playerMicroformatRenderer", "isFamilySafe"],
                 ),
-                "category": getValue(
+                "category": get_value(
                     responseSource,
                     ["microformat", "playerMicroformatRenderer", "category"],
                 ),
+                "link": build_watch_url(vid),
             }
-            component["isLiveNow"] = (
+            component["isLiveNow"] = bool(
                 component["isLiveContent"]
                 and component["duration"]["secondsText"] == "0"
             )
-            if component["id"]:
-                component["link"] = "https://www.youtube.com/watch?v=" + component["id"]
-            else:
-                component["link"] = None
-            if component["channel"]["id"]:
-                component["channel"]["link"] = (
-                    "https://www.youtube.com/channel/" + component["channel"]["id"]
-                )
-            else:
-                component["channel"]["link"] = None
             videoComponent.update(component)
+
         if mode in ["getFormats", None]:
             videoComponent.update(
-                {"streamingData": getValue(self.responseSource, ["streamingData"])}
+                {"streamingData": get_value(self.responseSource, ["streamingData"])}
             )
-        if self.enableHTML:
-            videoComponent["publishDate"] = getValue(
+
+        if self.enableHTML and self.HTMLresponseSource:
+            videoComponent["publishDate"] = get_value(
                 self.HTMLresponseSource,
                 ["microformat", "playerMicroformatRenderer", "publishDate"],
             )
-            videoComponent["uploadDate"] = getValue(
+            videoComponent["uploadDate"] = get_value(
                 self.HTMLresponseSource,
                 ["microformat", "playerMicroformatRenderer", "uploadDate"],
             )
-        self.__videoComponent = videoComponent
+
+        self._video_component = videoComponent

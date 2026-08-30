@@ -1,17 +1,18 @@
-import copy
 import json
-from typing import Union
-from urllib.parse import urlencode
+import logging
+from typing import Any, Callable, Dict, List, Optional, Union
 
-from py_yt.core.constants import requestPayload, searchKey, ResultMode
+from py_yt.core.constants import ResultMode
 from py_yt.core.requests import RequestCore
 from py_yt.handlers.componenthandler import ComponentHandler
 
+logger = logging.getLogger(__name__)
+
 
 class ChannelSearchCore(RequestCore, ComponentHandler):
-    response = None
-    responseSource = None
-    resultComponents = []
+    response: Optional[Union[List[Any], Dict[str, Any]]] = None
+    responseSource: Optional[Any] = None
+    resultComponents: List[Dict[str, Any]] = []
 
     def __init__(
         self,
@@ -19,14 +20,14 @@ class ChannelSearchCore(RequestCore, ComponentHandler):
         language: str,
         region: str,
         search_preferences: str,
-        browse_id: str,
-        timeout: int,
+        browse_id: Optional[str] = None,
+        timeout: float = 7.0,
         max_retries: int = 2,
-        proxy: str | None = None,
-        visitor_data: str | None = None,
-        po_token: str | None = None,
-        po_token_verifier=None,
-    ):
+        proxy: Optional[str] = None,
+        visitor_data: Optional[str] = None,
+        po_token: Optional[str] = None,
+        po_token_verifier: Optional[Callable[..., Any]] = None,
+    ) -> None:
         super().__init__(
             timeout=timeout,
             max_retries=max_retries,
@@ -35,29 +36,57 @@ class ChannelSearchCore(RequestCore, ComponentHandler):
             po_token=po_token,
             po_token_verifier=po_token_verifier,
         )
-        self.query = query
-        self.language = language
-        self.region = region
-        self.browseId = browse_id
-        self.searchPreferences = search_preferences
-        self.continuationKey = None
-        self.timeout = timeout
+        self.query: str = query
+        self.language: str = language
+        self.region: str = region
+        self.browseId: Optional[str] = self._extract_channel_id(browse_id) if browse_id else None
+        self.searchPreferences: str = search_preferences
+        self.continuationKey: Optional[str] = None
+        self.timeout: float = timeout
 
-    async def next(self):
-        await self._asyncRequest()
-        self._parseChannelSearchSource()
-        self.response = self._getChannelSearchComponent(self.response)
-        return self.response
+    def _extract_channel_id(self, browse_id_or_url: str) -> str:
+        clean = browse_id_or_url.strip()
+        if "youtube.com/channel/" in clean:
+            return clean.split("youtube.com/channel/")[1].split("/")[0].split("?")[0]
+        return clean
 
-    def _parseChannelSearchSource(self) -> None:
+    async def next(self) -> Dict[str, Any]:
+        if not self.browseId:
+            await self._resolve_browse_id()
+        if not self.browseId:
+            return {"result": []}
+
+        await self._make_request()
+        self._parse_channel_search_source()
+        raw_elements: List[Any] = (
+            self.response if isinstance(self.response, list) else []
+        )
+        components = self._get_channel_search_component(raw_elements)
+        self.response = components
+        return {"result": components}
+
+    def _parse_channel_search_source(self) -> None:
         try:
-            last_tab = self.response["contents"]["twoColumnBrowseResultsRenderer"][
-                "tabs"
-            ][-1]
+            if not isinstance(self.response, dict):
+                self.response = []
+                return
+
+            contents = (
+                self.response.get("contents", {})
+                .get("twoColumnBrowseResultsRenderer", {})
+                .get("tabs", [])
+            )
+            if not contents:
+                self.response = []
+                return
+
+            last_tab = contents[-1]
             if "expandableTabRenderer" in last_tab:
                 renderer = last_tab["expandableTabRenderer"]
                 if "content" in renderer:
-                    self.response = renderer["content"]["sectionListRenderer"]["contents"]
+                    self.response = renderer["content"]["sectionListRenderer"][
+                        "contents"
+                    ]
                 else:
                     self.response = []
             elif "tabRenderer" in last_tab:
@@ -70,45 +99,58 @@ class ChannelSearchCore(RequestCore, ComponentHandler):
                     self.response = []
             else:
                 self.response = []
-        except:
-            raise Exception("ERROR: Could not parse YouTube response.")
-
-    def _getRequestBody(self):
-        requestBody = copy.deepcopy(requestPayload)
-        requestBody["query"] = self.query
-        requestBody["context"]["client"]["hl"] = self.language
-        requestBody["context"]["client"]["gl"] = self.region
-        requestBody["params"] = self.searchPreferences
-        requestBody["browseId"] = self.browseId
-        self.url = (
-            "https://www.youtube.com/youtubei/v1/browse"
-            + "?"
-            + urlencode(
-                {
-                    "key": searchKey,
-                }
+        except Exception as e:
+            logger.error(
+                "Could not parse channel search YouTube response", exc_info=True
             )
+            raise Exception("ERROR: Could not parse YouTube response.") from e
+
+    async def _resolve_browse_id(self) -> None:
+        from py_yt.core.search import SearchCore
+        from py_yt.core.constants import SearchMode
+        search = SearchCore(
+            self.query,
+            1,
+            self.language,
+            self.region,
+            SearchMode.channels,
+            self.timeout,
+            proxy=getattr(self, "proxy", None),
         )
-        self.data = requestBody
+        res = await search.next()
+        results = res.get("result", [])
+        if results and isinstance(results, list):
+            first_channel = results[0]
+            if isinstance(first_channel, dict) and first_channel.get("id"):
+                self.browseId = first_channel["id"]
 
-    async def _makeRequest(self) -> None:
-        self._getRequestBody()
+    def _get_request_body(self) -> None:
+        self.url = self._build_url("browse")
+        self.data = self._build_payload(
+            language=self.language,
+            region=self.region,
+            query=self.query,
+            params=self.searchPreferences,
+            browseId=self.browseId,
+        )
 
-        request = await self.postRequest()
-        try:
-            self.response = await request.json()
-        except:
+    async def _make_request(self) -> None:
+        self._get_request_body()
+
+        request = await self.post_request()
+        if request is None:
             raise Exception("ERROR: Could not make request.")
 
-    def result(self, mode: int = ResultMode.dict) -> Union[str, dict]:
-        """Returns the search result.
-        Args:
-            mode (int, optional): Sets the type of result. Defaults to ResultMode.dict.
-        Returns:
-            Union[str, dict]: Returns JSON or dictionary.
-        """
+        try:
+            self.response = await request.json()
+        except Exception as e:
+            logger.error(
+                "Failed to parse JSON response from channel search", exc_info=True
+            )
+            raise Exception("ERROR: Could not make request.") from e
+
+    def result(self, mode: int = ResultMode.dict) -> Union[str, Dict[str, Any]]:
+        """Returns the search result."""
         if mode == ResultMode.json:
             return json.dumps({"result": self.response}, indent=4)
-        elif mode == ResultMode.dict:
-            return {"result": self.response}
-
+        return {"result": self.response or {}}

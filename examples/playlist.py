@@ -1,6 +1,7 @@
 import asyncio
 from py_yt import Playlist, close_session
 
+
 async def main():
     """
     Getting information about playlist or videos in it using link.
@@ -10,16 +11,18 @@ async def main():
     `Playlist.getFormats` method will give only formats of the playlist.
 
     """
-    playlist_url = "https://www.youtube.com/playlist?list=PLRBp0Fe2GpgmsW46rJyudVFlY6IYjFBIK"
-    
+    playlist_url = (
+        "https://www.youtube.com/playlist?list=PLRBp0Fe2GpgmsW46rJyudVFlY6IYjFBIK"
+    )
+
     playlist_full = await Playlist.get(playlist_url)
     print(playlist_full)
-    
-    playlistInfo = await Playlist.getInfo(playlist_url)
-    print(playlistInfo)
-    
-    playlistVideos = await Playlist.getVideos(playlist_url)
-    print(playlistVideos)
+
+    playlist_info = await Playlist.get_info(playlist_url)
+    print(playlist_info)
+
+    playlist_videos = await Playlist.get_videos(playlist_url)
+    print(playlist_videos)
 
     """
     More tests to buggy Playlist class
@@ -36,12 +39,13 @@ async def main():
 
     while playlist_iter.hasMoreVideos:
         print("Getting more videos...")
-        await playlist_iter.getNextVideos()
+        await playlist_iter.get_next_videos()
         print(f"Videos Retrieved: {len(playlist_iter.videos)}")
 
     print("Found all the videos.")
 
     await close_session()
+
 
 if __name__ == "__main__":
     asyncio.run(main())

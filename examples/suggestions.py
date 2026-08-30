@@ -1,6 +1,7 @@
 import asyncio
 from py_yt import Suggestions, close_session
 
+
 async def main():
     """
     Getting search suggestions from YouTube.
@@ -10,6 +11,7 @@ async def main():
     print(suggestions)
 
     await close_session()
+
 
 if __name__ == "__main__":
     asyncio.run(main())

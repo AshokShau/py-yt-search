@@ -15,6 +15,13 @@ from .search import (
     CustomSearch,
     ChannelSearch,
 )
+from .hype import HypeHint, parse_view_count, parse_age_in_hours
+from .exceptions import (
+    PyYTSearchError,
+    ParsingError,
+    RequestError,
+    VideoNotFoundError,
+)
 
 from .handlers import ComponentHandler, RequestHandler
 from .core.session import (
@@ -50,4 +57,11 @@ __all__ = [
     "ChannelSearch",
     "ComponentHandler",
     "RequestHandler",
+    "HypeHint",
+    "parse_view_count",
+    "parse_age_in_hours",
+    "PyYTSearchError",
+    "ParsingError",
+    "RequestError",
+    "VideoNotFoundError",
 ]

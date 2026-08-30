@@ -2,6 +2,7 @@ import asyncio
 from py_yt import CustomSearch, close_session
 from py_yt.core.constants import VideoSortOrder
 
+
 async def main():
     """
     Can be used to get search results with custom defined filters.
@@ -15,7 +16,7 @@ async def main():
     VideoSortOrder.viewCount
     There are many other for you to check out.
 
-    If this much control isn't enough then, you may pass custom string yourself by seeing the YouTube query in any web browser e.g. 
+    If this much control isn't enough then, you may pass custom string yourself by seeing the YouTube query in any web browser e.g.
     "EgQIBRAB" from "https://www.youtube.com/results?search_query=NoCopyrightSounds&sp=EgQIBRAB" may be passed as second parameter to get only videos, which are uploaded this year.
     """
     customSearch = CustomSearch(
@@ -25,6 +26,7 @@ async def main():
     print(customResult)
 
     await close_session()
+
 
 if __name__ == "__main__":
     asyncio.run(main())

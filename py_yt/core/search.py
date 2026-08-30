@@ -1,18 +1,14 @@
-import copy
 import json
 import re
-from typing import Union
-from urllib.parse import urlencode
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 from py_yt.core.constants import (
-    requestPayload,
-    searchKey,
     ResultMode,
-    videoElementKey,
     channelElementKey,
     playlistElementKey,
-    shelfElementKey,
     richItemKey,
+    shelfElementKey,
+    videoElementKey,
 )
 from py_yt.core.requests import RequestCore
 from py_yt.handlers.componenthandler import ComponentHandler
@@ -20,9 +16,10 @@ from py_yt.handlers.requesthandler import RequestHandler
 
 
 class SearchCore(RequestCore, RequestHandler, ComponentHandler):
-    response = None
-    responseSource = None
-    resultComponents = []
+    response: Optional[Union[str, List[Any], Dict[str, Any]]] = None
+    responseSource: Optional[Any] = None
+    resultComponents: List[Dict[str, Any]] = []
+    searchMode: Tuple[bool, bool, bool] = (True, True, True)
 
     def __init__(
         self,
@@ -31,14 +28,14 @@ class SearchCore(RequestCore, RequestHandler, ComponentHandler):
         language: str,
         region: str,
         searchPreferences: str,
-        timeout: int,
+        timeout: float,
         with_live: bool = True,
         max_retries: int = 2,
-        proxy: str | None = None,
-        visitor_data: str | None = None,
-        po_token: str | None = None,
-        po_token_verifier=None,
-    ):
+        proxy: Optional[str] = None,
+        visitor_data: Optional[str] = None,
+        po_token: Optional[str] = None,
+        po_token_verifier: Optional[Callable[..., Any]] = None,
+    ) -> None:
         super().__init__(
             timeout=timeout,
             max_retries=max_retries,
@@ -47,20 +44,17 @@ class SearchCore(RequestCore, RequestHandler, ComponentHandler):
             po_token=po_token,
             po_token_verifier=po_token_verifier,
         )
-        self.query = query
-        self.limit = limit
-        self.language = language
-        self.region = region
-        self.searchPreferences = searchPreferences
-        self.timeout = timeout
-        self.with_live = with_live
-        self.continuationKey = None
+        self.query: str = query
+        self.limit: int = limit
+        self.language: str = language
+        self.region: str = region
+        self.searchPreferences: str = searchPreferences
+        self.timeout: float = timeout
+        self.with_live: bool = with_live
+        self.continuationKey: Optional[str] = None
 
-    def _getRequestBody(self):
-        requestBody = copy.deepcopy(requestPayload)
-        requestBody["query"] = self.query
-        requestBody["context"]["client"]["hl"] = self.language
-        requestBody["context"]["client"]["gl"] = self.region
+    def _get_request_body(self) -> None:
+        q = self.query
         is_video_id_or_url = False
         video_patterns = [
             r"(?:https?:\/\/)?(?:www\.)?youtube\.com\/watch\?v=([a-zA-Z0-9_-]{11})",
@@ -72,67 +66,57 @@ class SearchCore(RequestCore, RequestHandler, ComponentHandler):
         for pattern in video_patterns:
             if match := re.search(pattern, self.query):
                 is_video_id_or_url = True
-                requestBody["query"] = match.group(1)
+                q = match.group(1)
                 break
 
-        if self.searchPreferences and not is_video_id_or_url:
-            requestBody["params"] = self.searchPreferences
-        if self.continuationKey:
-            requestBody["continuation"] = self.continuationKey
-        self.url = (
-            "https://www.youtube.com/youtubei/v1/search"
-            + "?"
-            + urlencode(
-                {
-                    "key": searchKey,
-                }
-            )
-        )
-        self.data = requestBody
+        params = self.searchPreferences if (self.searchPreferences and not is_video_id_or_url) else None
 
-    async def _makeRequest(self) -> None:
-        self._getRequestBody()
-        request = await self.postRequest()
+        self.url = self._build_url("search")
+        self.data = self._build_payload(
+            language=self.language,
+            region=self.region,
+            query=q,
+            params=params,
+            continuation=self.continuationKey,
+        )
+
+    async def _make_request(self) -> None:
+        self._get_request_body()
+        request = await self.post_request()
         if request:
             self.response = await request.text()
         else:
             raise Exception("ERROR: Could not make request.")
 
-    def result(self, mode: int = ResultMode.dict) -> Union[str, dict]:
-        """Returns the search result.
-
-        Args:
-            mode (int, optional): Sets the type of result. Defaults to ResultMode.dict.
-
-        Returns:
-            Union[str, dict]: Returns JSON or dictionary.
-        """
+    def result(self, mode: int = ResultMode.dict) -> Union[str, Dict[str, Any]]:
+        """Returns the search result in dict or JSON format."""
         if mode == ResultMode.json:
             return json.dumps({"result": self.resultComponents}, indent=4)
-        elif mode == ResultMode.dict:
-            return {"result": self.resultComponents}
+        return {"result": self.resultComponents}
 
-    async def next(self) -> dict:
+    async def next(self) -> Dict[str, Any]:
         self.response = None
         self.responseSource = None
         self.resultComponents = []
-        await self._makeRequest()
-        self._parseSource()
-        self._getComponents(*self.searchMode)
+        await self._make_request()
+        self._parse_source()
+        self._get_components(*self.searchMode)
         return {
             "result": self.resultComponents,
         }
 
-    def _getComponents(
-        self, findVideos: bool, findChannels: bool, findPlaylists: bool
+    def _get_components(
+        self, find_videos: bool, find_channels: bool, find_playlists: bool
     ) -> None:
         self.resultComponents = []
-        if not self.responseSource:
+        if not self.responseSource or not isinstance(self.responseSource, list):
             return
 
         for element in self.responseSource:
-            if videoElementKey in element and findVideos:
-                videoComponent = self._getVideoComponent(element)
+            if not isinstance(element, dict):
+                continue
+            if videoElementKey in element and find_videos:
+                videoComponent = self._get_video_component(element)
                 if (
                     not self.with_live
                     and videoComponent["duration"] is None
@@ -140,28 +124,38 @@ class SearchCore(RequestCore, RequestHandler, ComponentHandler):
                 ):
                     continue
                 self.resultComponents.append(videoComponent)
-            if channelElementKey in element and findChannels:
-                self.resultComponents.append(self._getChannelComponent(element))
-            if (playlistElementKey in element or "lockupViewModel" in element) and findPlaylists:
-                self.resultComponents.append(self._getPlaylistComponent(element))
-            if shelfElementKey in element and findVideos:
-                for shelfElement in self._getShelfComponent(element)["elements"]:
-                    videoComponent = self._getVideoComponent(
-                        shelfElement,
-                        shelfTitle=self._getShelfComponent(element)["title"],
-                    )
-                    if (
-                        not self.with_live
-                        and videoComponent["duration"] is None
-                        and videoComponent["publishedTime"] is None
-                    ):
-                        continue
-                    self.resultComponents.append(videoComponent)
-            if richItemKey in element and findVideos:
-                richItemElement = self._getValue(element, [richItemKey, "content"])
-                """ Initial fallback handling for VideosSearch """
-                if videoElementKey in richItemElement:
-                    videoComponent = self._getVideoComponent(richItemElement)
+            if channelElementKey in element and find_channels:
+                self.resultComponents.append(self._get_channel_component(element))
+            if (
+                playlistElementKey in element or "lockupViewModel" in element
+            ) and find_playlists:
+                self.resultComponents.append(self._get_playlist_component(element))
+            if shelfElementKey in element and find_videos:
+                shelfComp = self._get_shelf_component(element)
+                shelfElements = (
+                    shelfComp.get("elements") if isinstance(shelfComp, dict) else None
+                )
+                if shelfElements and isinstance(shelfElements, list):
+                    for shelfElement in shelfElements:
+                        if isinstance(shelfElement, dict):
+                            videoComponent = self._get_video_component(
+                                shelfElement,
+                                shelf_title=shelfComp.get("title"),
+                            )
+                            if (
+                                not self.with_live
+                                and videoComponent["duration"] is None
+                                and videoComponent["publishedTime"] is None
+                            ):
+                                continue
+                            self.resultComponents.append(videoComponent)
+            if richItemKey in element and find_videos:
+                richItemElement = self._get_value(element, [richItemKey, "content"])
+                if (
+                    isinstance(richItemElement, dict)
+                    and videoElementKey in richItemElement
+                ):
+                    videoComponent = self._get_video_component(richItemElement)
                     if (
                         not self.with_live
                         and videoComponent["duration"] is None

@@ -1,30 +1,27 @@
-import copy
 import json
-from typing import Union
-from urllib.parse import urlencode
-import aiohttp
+import logging
+from typing import Any, Dict, List, Optional, Union
 
-from py_yt.core.session import get_session
 from py_yt.core.constants import (
-    videoElementKey,
     ResultMode,
-    requestPayload,
-    searchKey,
-    userAgent,
     contentPath,
-    hashtagElementKey,
-    hashtagBrowseKey,
-    hashtagVideosPath,
-    hashtagContinuationVideosPath,
-    richItemKey,
     continuationKeyPath,
+    hashtagBrowseKey,
+    hashtagContinuationVideosPath,
+    hashtagElementKey,
+    hashtagVideosPath,
+    richItemKey,
+    videoElementKey,
 )
+from py_yt.core.requests import RequestCore
 from py_yt.handlers.componenthandler import ComponentHandler
 
+logger = logging.getLogger(__name__)
 
-class HashtagCore(ComponentHandler):
-    response = None
-    resultComponents = []
+
+class HashtagCore(RequestCore, ComponentHandler):
+    response: Optional[str] = None
+    resultComponents: List[Dict[str, Any]] = []
 
     def __init__(
         self,
@@ -32,143 +29,126 @@ class HashtagCore(ComponentHandler):
         limit: int,
         language: str,
         region: str,
-        timeout: int,
-        proxy: str | None = None,
-    ):
-        self.hashtag = hashtag
-        self.limit = limit
-        self.language = language
-        self.region = region
-        self.timeout = timeout
-        self.proxy = proxy
-        self.continuationKey = None
-        self.params = None
+        timeout: float,
+        proxy: Optional[str] = None,
+    ) -> None:
+        super().__init__(timeout=timeout, proxy=proxy)
+        self.hashtag: str = hashtag
+        self.limit: int = limit
+        self.language: str = language
+        self.region: str = region
+        self.timeout: float = timeout
+        self.continuationKey: Optional[str] = None
+        self.params: Optional[str] = None
 
-    def result(self, mode: int = ResultMode.dict) -> Union[str, dict]:
-        """Returns the hashtag videos.
-        Args:
-            mode (int, optional): Sets the type of result. Defaults to ResultMode.dict.
-        Returns:
-            Union[str, dict]: Returns JSON or dictionary.
-        """
+    def result(self, mode: int = ResultMode.dict) -> Union[str, Dict[str, Any]]:
+        """Returns the hashtag videos."""
         if mode == ResultMode.json:
             return json.dumps({"result": self.resultComponents}, indent=4)
-        elif mode == ResultMode.dict:
-            return {"result": self.resultComponents}
+        return {"result": self.resultComponents}
 
-    async def next(self) -> bool:
-        """Gets the videos from the next page. Call result
-        Returns:
-            bool: Returns True if getting more results was successful.
-        """
+    async def next(self) -> Dict[str, Any]:
+        """Gets the videos from the next page."""
         self.response = None
         self.resultComponents = []
-        if self.continuationKey:
-            await self._makeRequest()
-            self._getComponents()
-        if self.resultComponents:
-            return True
-        return False
+        if not self.params:
+            await self._get_params()
+        if self.continuationKey or self.params:
+            await self._make_request()
+            self._get_components()
+        return {"result": self.resultComponents}
 
-    async def _getParams(self) -> None:
-        requestBody = copy.deepcopy(requestPayload)
-        requestBody["query"] = "#" + self.hashtag
-        requestBody["context"]["client"]["hl"] = self.language
-        requestBody["context"]["client"]["gl"] = self.region
-        try:
-            session = await get_session()
-            timeout = aiohttp.ClientTimeout(total=self.timeout)
-            headers = {
-                "User-Agent": userAgent,
-                "Origin": "https://www.youtube.com",
-                "Referer": "https://www.youtube.com/",
-                "Accept-Language": "en-US,en;q=0.9",
-                "X-YouTube-Client-Name": "1",
-                "X-YouTube-Client-Version": requestBody["context"]["client"]["clientVersion"],
-            }
-            response = await session.post(
-                "https://www.youtube.com/youtubei/v1/search",
-                params={
-                    "key": searchKey,
-                },
-                headers=headers,
-                json=requestBody,
-                proxy=self.proxy,
-                timeout=timeout,
-            )
-            response_json = await response.json()
-        except:
+    async def _get_params(self) -> None:
+        self.url = self._build_url("search")
+        self.data = self._build_payload(
+            language=self.language,
+            region=self.region,
+            query="#" + self.hashtag,
+        )
+
+        resp = await self.post_request()
+        if resp is None:
             raise Exception("ERROR: Could not make request.")
-        content = self._getValue(response_json, contentPath)
-        for item in self._getValue(content, [0, "itemSectionRenderer", "contents"]):
-            if hashtagElementKey in item.keys():
-                self.params = self._getValue(
-                    item[hashtagElementKey],
-                    ["onTapCommand", "browseEndpoint", "params"],
-                )
-                return
 
-    async def _makeRequest(self) -> None:
-        if self.params == None:
+        try:
+            response_json = await resp.json()
+        except Exception as e:
+            logger.error(
+                "Failed to parse JSON response in hashtag _get_params", exc_info=True
+            )
+            raise Exception("ERROR: Could not make request.") from e
+
+        content = self._get_value(response_json, contentPath)
+        items = self._get_value(content, [0, "itemSectionRenderer", "contents"])
+        if items and isinstance(items, list):
+            for item in items:
+                if isinstance(item, dict) and hashtagElementKey in item:
+                    self.params = self._get_value(
+                        item[hashtagElementKey],
+                        ["onTapCommand", "browseEndpoint", "params"],
+                    )
+                    return
+
+    async def _make_request(self) -> None:
+        if self.params is None:
             return
-        requestBody = copy.deepcopy(requestPayload)
-        requestBody["browseId"] = hashtagBrowseKey
-        requestBody["params"] = self.params
-        requestBody["context"]["client"]["hl"] = self.language
-        requestBody["context"]["client"]["gl"] = self.region
-        if self.continuationKey:
-            requestBody["continuation"] = self.continuationKey
-        try:
-            session = await get_session()
-            timeout = aiohttp.ClientTimeout(total=self.timeout)
-            headers = {
-                "User-Agent": userAgent,
-                "Origin": "https://www.youtube.com",
-                "Referer": "https://www.youtube.com/",
-                "Accept-Language": "en-US,en;q=0.9",
-                "X-YouTube-Client-Name": "1",
-                "X-YouTube-Client-Version": requestBody["context"]["client"]["clientVersion"],
-            }
-            response = await session.post(
-                "https://www.youtube.com/youtubei/v1/browse",
-                params={
-                    "key": searchKey,
-                },
-                headers=headers,
-                json=requestBody,
-                proxy=self.proxy,
-                timeout=timeout,
-            )
-            self.response = await response.read()
-        except:
+        self.url = self._build_url("browse")
+        self.data = self._build_payload(
+            language=self.language,
+            region=self.region,
+            browseId=hashtagBrowseKey,
+            params=self.params,
+            continuation=self.continuationKey,
+        )
+
+        resp = await self.post_request()
+        if resp is None:
             raise Exception("ERROR: Could not make request.")
 
-    def _getComponents(self) -> None:
-        if self.response == None:
+        try:
+            raw_data = await resp.read()
+            self.response = raw_data.decode("utf-8", errors="ignore")
+        except Exception as e:
+            logger.error(
+                "Failed to read response in hashtag _make_request", exc_info=True
+            )
+            raise Exception("ERROR: Could not make request.") from e
+
+    def _get_components(self) -> None:
+        if self.response is None:
             return
         self.resultComponents = []
         try:
+            data = json.loads(self.response)
             if not self.continuationKey:
-                responseSource = self._getValue(
-                    json.loads(self.response), hashtagVideosPath
-                )
+                responseSource = self._get_value(data, hashtagVideosPath)
             else:
-                responseSource = self._getValue(
-                    json.loads(self.response), hashtagContinuationVideosPath
+                responseSource = self._get_value(
+                    data,
+                    hashtagContinuationVideosPath,
                 )
-            if responseSource:
+
+            if responseSource and isinstance(responseSource, list):
                 for element in responseSource:
-                    if richItemKey in element.keys():
-                        richItemElement = self._getValue(
+                    if not isinstance(element, dict):
+                        continue
+                    if richItemKey in element:
+                        richItemElement = self._get_value(
                             element, [richItemKey, "content"]
                         )
-                        if videoElementKey in richItemElement.keys():
-                            videoComponent = self._getVideoComponent(richItemElement)
+                        if (
+                            isinstance(richItemElement, dict)
+                            and videoElementKey in richItemElement
+                        ):
+                            videoComponent = self._get_video_component(richItemElement)
                             self.resultComponents.append(videoComponent)
                     if len(self.resultComponents) >= self.limit:
                         break
-                self.continuationKey = self._getValue(
-                    responseSource[-1], continuationKeyPath
-                )
-        except:
-            raise Exception("ERROR: Could not parse YouTube response.")
+                if responseSource:
+                    self.continuationKey = self._get_value(
+                        responseSource[-1],
+                        continuationKeyPath,
+                    )
+        except Exception as e:
+            logger.error("Could not parse YouTube hashtag response", exc_info=True)
+            raise Exception("ERROR: Could not parse YouTube response.") from e
