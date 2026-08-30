@@ -174,4 +174,4 @@ class VideoSortOrder:
 
 class ChannelRequestType:
     info: str = "EgVhYm91dA%3D%3D"
-    playlists: str = "EglwbGF5bGlzdHMYAyABcAA%3D"
+    playlists: str = "EglwbGF5bGlzdHPyBgQKAkIA"

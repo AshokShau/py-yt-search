@@ -18,11 +18,11 @@ async def main():
     playlist_full = await Playlist.get(playlist_url)
     print(playlist_full)
 
-    playlistInfo = await Playlist.getInfo(playlist_url)
-    print(playlistInfo)
+    playlist_info = await Playlist.get_info(playlist_url)
+    print(playlist_info)
 
-    playlistVideos = await Playlist.getVideos(playlist_url)
-    print(playlistVideos)
+    playlist_videos = await Playlist.get_videos(playlist_url)
+    print(playlist_videos)
 
     """
     More tests to buggy Playlist class
@@ -39,7 +39,7 @@ async def main():
 
     while playlist_iter.hasMoreVideos:
         print("Getting more videos...")
-        await playlist_iter.getNextVideos()
+        await playlist_iter.get_next_videos()
         print(f"Videos Retrieved: {len(playlist_iter.videos)}")
 
     print("Found all the videos.")

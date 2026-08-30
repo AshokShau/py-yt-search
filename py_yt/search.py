@@ -196,7 +196,7 @@ class ChannelSearch(ChannelSearchCore):
         browse_id: str,
         language: str = "en",
         region: str = "US",
-        search_preferences: str = "EgZzZWFyY2g%3D",
+        search_preferences: str = "EgZzZWFyY2jyBgQKAloA",
         timeout: Optional[float] = None,
         max_retries: int = 2,
         proxy: Optional[str] = None,

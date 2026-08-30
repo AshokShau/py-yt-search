@@ -31,6 +31,52 @@ class ChannelCore(RequestCore):
             )
 
     def playlist_parse(self, i: Dict[str, Any]) -> Dict[str, Any]:
+        if "gridPlaylistRenderer" in i:
+            pl = i["gridPlaylistRenderer"]
+            return {
+                "id": get_value(pl, ["playlistId"]),
+                "thumbnails": get_value(pl, ["thumbnail", "thumbnails"]),
+                "title": get_value(pl, ["title", "runs", 0, "text"]),
+                "videoCount": get_value(pl, ["videoCountShortText", "simpleText"]),
+                "lastEdited": get_value(pl, ["publishedTimeText", "simpleText"]),
+            }
+        elif "lockupViewModel" in i:
+            lockup = i["lockupViewModel"]
+            return {
+                "id": get_value(lockup, ["contentId"]),
+                "thumbnails": get_value(
+                    lockup,
+                    [
+                        "contentImage",
+                        "collectionThumbnailViewModel",
+                        "primaryThumbnail",
+                        "thumbnailViewModel",
+                        "image",
+                        "sources",
+                    ],
+                ),
+                "title": get_value(
+                    lockup,
+                    ["metadata", "lockupMetadataViewModel", "title", "content"],
+                ),
+                "videoCount": get_value(
+                    lockup,
+                    [
+                        "contentImage",
+                        "collectionThumbnailViewModel",
+                        "primaryThumbnail",
+                        "thumbnailViewModel",
+                        "overlays",
+                        0,
+                        "thumbnailOverlayBadgeViewModel",
+                        "thumbnailBadges",
+                        0,
+                        "thumbnailBadgeViewModel",
+                        "text",
+                    ],
+                ),
+                "lastEdited": None,
+            }
         return {
             "id": get_value(i, ["playlistId"]),
             "thumbnails": get_value(i, ["thumbnail", "thumbnails"]),
@@ -107,9 +153,8 @@ class ChannelCore(RequestCore):
                                     ],
                                 )
                                 break
-                            pl_data = get_value(item, ["gridPlaylistRenderer"])
-                            if pl_data and isinstance(pl_data, dict):
-                                playlists.append(self.playlist_parse(pl_data))
+                            if get_value(item, ["gridPlaylistRenderer"]) or get_value(item, ["lockupViewModel"]):
+                                playlists.append(self.playlist_parse(item))
                 elif title == "About":
                     tabData = tab.get("tabRenderer", {})
 
@@ -246,12 +291,10 @@ class ChannelCore(RequestCore):
                     ],
                 )
                 break
-            elif get_value(i, ["gridPlaylistRenderer"]):
-                grid_pl = get_value(i, ["gridPlaylistRenderer"])
-                if grid_pl and isinstance(grid_pl, dict):
-                    self.result.setdefault("playlists", []).append(
-                        self.playlist_parse(grid_pl)
-                    )
+            elif get_value(i, ["gridPlaylistRenderer"]) or get_value(i, ["lockupViewModel"]):
+                self.result.setdefault("playlists", []).append(
+                    self.playlist_parse(i)
+                )
 
     async def next(self) -> None:
         if not self.continuation:

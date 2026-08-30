@@ -15,10 +15,10 @@ async def main():
     video = await Video.get("z0GKGpObgPY")
     print(video)
 
-    videoInfo = await Video.getInfo("https://youtu.be/z0GKGpObgPY")
+    videoInfo = await Video.get_info("https://youtu.be/z0GKGpObgPY")
     print(videoInfo)
 
-    videoInfoMusic = await Video.getInfo(
+    videoInfoMusic = await Video.get_info(
         "https://music.youtube.com/watch?v=RLsYNh7GN-k&si=tgb4LsBN8zEU-iST"
     )
     print(videoInfoMusic)

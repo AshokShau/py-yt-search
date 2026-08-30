@@ -14,20 +14,20 @@ async def main():
     """
     Searches only for videos in YouTube.
     """
-    videosSearch = VideosSearch(
+    videos_search = VideosSearch(
         "NoCopyrightSounds", limit=10, language="en", region="US"
     )
-    videosResult = await videosSearch.next()
-    print(videosResult)
+    videos_result = await videos_search.next()
+    print(videos_result)
 
     """
     Searches only for channels in YouTube.
     """
-    channelsSearch = ChannelsSearch(
+    channels_search = ChannelsSearch(
         "NoCopyrightSounds", limit=1, language="en", region="US"
     )
-    channelsResult = await channelsSearch.next()
-    print(channelsResult)
+    channels_result = await channels_search.next()
+    print(channels_result)
 
     """
     Searches only for playlists in YouTube.
