@@ -1,8 +1,15 @@
 import copy
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List, Optional, Union
 
 from py_yt.core.browse import BrowseCore
 from py_yt.core.channel import ChannelCore
+from py_yt.core.comments import (
+    Comment,
+    CommentPage,
+    CommentsPaginator,
+    Reply,
+    RepliesPaginator,
+)
 from py_yt.core.constants import ChannelRequestType, ResultMode
 from py_yt.core.hashtag import HashtagCore
 from py_yt.core.playlist import PlaylistCore
@@ -229,3 +236,46 @@ class Recommendations:
             proxy=proxy,
         )
         return await related.next()
+
+
+class Comments(CommentsPaginator):
+    def __init__(
+        self,
+        video_link_or_id: str,
+        timeout: float = 7.0,
+        max_retries: int = 2,
+        proxy: Optional[str] = None,
+        visitor_data: Optional[str] = None,
+        po_token: Optional[str] = None,
+    ) -> None:
+        super().__init__(
+            video_link_or_id=video_link_or_id,
+            timeout=timeout,
+            max_retries=max_retries,
+            proxy=proxy,
+            visitor_data=visitor_data,
+            po_token=po_token,
+        )
+
+    async def get(
+        self_or_video_id: Any,
+        proxy: Optional[str] = None,
+        timeout: float = 7.0,
+    ) -> Any:
+        if isinstance(self_or_video_id, CommentsPaginator):
+            return await super(Comments, self_or_video_id).get()
+        else:
+            paginator = CommentsPaginator(
+                video_link_or_id=self_or_video_id, proxy=proxy, timeout=timeout
+            )
+            return await paginator.get()
+
+
+async def comments(
+    video_link_or_id: str,
+    proxy: Optional[str] = None,
+    timeout: float = 7.0,
+) -> CommentsPaginator:
+    return CommentsPaginator(
+        video_link_or_id=video_link_or_id, proxy=proxy, timeout=timeout
+    )
