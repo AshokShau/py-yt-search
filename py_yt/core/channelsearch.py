@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 from py_yt.core.constants import ResultMode
 from py_yt.core.requests import RequestCore
@@ -24,17 +24,11 @@ class ChannelSearchCore(RequestCore, ComponentHandler):
         timeout: float = 7.0,
         max_retries: int = 2,
         proxy: Optional[str] = None,
-        visitor_data: Optional[str] = None,
-        po_token: Optional[str] = None,
-        po_token_verifier: Optional[Callable[..., Any]] = None,
     ) -> None:
         super().__init__(
             timeout=timeout,
             max_retries=max_retries,
             proxy=proxy,
-            visitor_data=visitor_data,
-            po_token=po_token,
-            po_token_verifier=po_token_verifier,
         )
         self.query: str = query
         self.language: str = language

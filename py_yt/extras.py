@@ -1,5 +1,5 @@
 import copy
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 from py_yt.core.browse import BrowseCore
 from py_yt.core.channel import ChannelCore
@@ -171,9 +171,6 @@ class Transcript:
         timeout: float = 7.0,
         max_retries: int = 2,
         proxy: Optional[str] = None,
-        visitor_data: Optional[str] = None,
-        po_token: Optional[str] = None,
-        po_token_verifier: Optional[Callable[..., Any]] = None,
     ) -> Dict[str, Any]:
         transcript_core = TranscriptCore(
             video_link=video_link,
@@ -181,9 +178,6 @@ class Transcript:
             timeout=timeout,
             max_retries=max_retries,
             proxy=proxy,
-            visitor_data=visitor_data,
-            po_token=po_token,
-            po_token_verifier=po_token_verifier,
         )
         await transcript_core.create()
         return transcript_core.result
@@ -195,9 +189,6 @@ class Transcript:
         timeout: float = 7.0,
         max_retries: int = 2,
         proxy: Optional[str] = None,
-        visitor_data: Optional[str] = None,
-        po_token: Optional[str] = None,
-        po_token_verifier: Optional[Callable[..., Any]] = None,
     ) -> Dict[str, Any]:
         return await Transcript.get(
             video_link=video_link,
@@ -205,9 +196,6 @@ class Transcript:
             timeout=timeout,
             max_retries=max_retries,
             proxy=proxy,
-            visitor_data=visitor_data,
-            po_token=po_token,
-            po_token_verifier=po_token_verifier,
         )
 
 
@@ -217,9 +205,6 @@ async def get_transcript(
     timeout: float = 7.0,
     max_retries: int = 2,
     proxy: Optional[str] = None,
-    visitor_data: Optional[str] = None,
-    po_token: Optional[str] = None,
-    po_token_verifier: Optional[Callable[..., Any]] = None,
 ) -> Dict[str, Any]:
     return await Transcript.get(
         video_link=video_link,
@@ -227,9 +212,6 @@ async def get_transcript(
         timeout=timeout,
         max_retries=max_retries,
         proxy=proxy,
-        visitor_data=visitor_data,
-        po_token=po_token,
-        po_token_verifier=po_token_verifier,
     )
 
 
@@ -305,16 +287,12 @@ class Comments(CommentsPaginator):
         timeout: float = 7.0,
         max_retries: int = 2,
         proxy: Optional[str] = None,
-        visitor_data: Optional[str] = None,
-        po_token: Optional[str] = None,
     ) -> None:
         super().__init__(
             video_link_or_id=video_link_or_id,
             timeout=timeout,
             max_retries=max_retries,
             proxy=proxy,
-            visitor_data=visitor_data,
-            po_token=po_token,
         )
 
     async def get(

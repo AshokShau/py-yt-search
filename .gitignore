@@ -1,5 +1,5 @@
-/.idea
+.idea
 __pycache__
 dist/
-py_yt_search.egg-info/
-.env
+*.egg-info/
+.mypy_cache

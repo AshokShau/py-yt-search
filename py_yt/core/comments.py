@@ -1,6 +1,6 @@
 import logging
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from py_yt.core.componenthandler import build_channel_url, get_value, get_video_id
 from py_yt.core.requests import RequestCore
@@ -329,17 +329,11 @@ class CommentsCore(RequestCore):
         timeout: float = 7.0,
         max_retries: int = 2,
         proxy: Optional[str] = None,
-        visitor_data: Optional[str] = None,
-        po_token: Optional[str] = None,
-        po_token_verifier: Optional[Callable[..., Any]] = None,
     ) -> None:
         super().__init__(
             timeout=timeout,
             max_retries=max_retries,
             proxy=proxy,
-            visitor_data=visitor_data,
-            po_token=po_token,
-            po_token_verifier=po_token_verifier,
         )
 
     async def fetch_initial_comments_token(self, video_id: str) -> Optional[str]:
@@ -538,9 +532,6 @@ class RepliesPaginator:
         timeout: float = 7.0,
         max_retries: int = 2,
         proxy: Optional[str] = None,
-        visitor_data: Optional[str] = None,
-        po_token: Optional[str] = None,
-        po_token_verifier: Optional[Callable[..., Any]] = None,
     ) -> None:
         self.comment_id: str = comment_id
         self.continuation: Optional[str] = continuation
@@ -551,9 +542,6 @@ class RepliesPaginator:
             timeout=timeout,
             max_retries=max_retries,
             proxy=proxy,
-            visitor_data=visitor_data,
-            po_token=po_token,
-            po_token_verifier=po_token_verifier,
         )
 
     async def get(self) -> CommentPage:
@@ -625,9 +613,6 @@ class CommentsPaginator:
         timeout: float = 7.0,
         max_retries: int = 2,
         proxy: Optional[str] = None,
-        visitor_data: Optional[str] = None,
-        po_token: Optional[str] = None,
-        po_token_verifier: Optional[Callable[..., Any]] = None,
     ) -> None:
         self.video_id: str = get_video_id(video_link_or_id)
         self.continuation: Optional[str] = None
@@ -639,17 +624,11 @@ class CommentsPaginator:
         self._timeout: float = timeout
         self._max_retries: int = max_retries
         self._proxy: Optional[str] = proxy
-        self._visitor_data: Optional[str] = visitor_data
-        self._po_token: Optional[str] = po_token
-        self._po_token_verifier: Optional[Callable[..., Any]] = po_token_verifier
 
         self._core: CommentsCore = CommentsCore(
             timeout=timeout,
             max_retries=max_retries,
             proxy=proxy,
-            visitor_data=visitor_data,
-            po_token=po_token,
-            po_token_verifier=po_token_verifier,
         )
 
     async def _init_comments(self) -> None:
@@ -722,9 +701,6 @@ class CommentsPaginator:
             timeout=self._timeout,
             max_retries=self._max_retries,
             proxy=self._proxy,
-            visitor_data=self._visitor_data,
-            po_token=self._po_token,
-            po_token_verifier=self._po_token_verifier,
         )
 
     def __aiter__(self) -> Any:

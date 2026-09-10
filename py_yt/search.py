@@ -1,4 +1,4 @@
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Dict, Optional
 
 from py_yt.core.channelsearch import ChannelSearchCore
 from py_yt.core.constants import SearchMode
@@ -18,9 +18,6 @@ class Search(SearchCore):
         with_live: bool = True,
         max_retries: int = 2,
         proxy: Optional[str] = None,
-        visitor_data: Optional[str] = None,
-        po_token: Optional[str] = None,
-        po_token_verifier: Optional[Callable[..., Any]] = None,
     ) -> None:
         self.searchMode = (True, True, True)
         super().__init__(
@@ -33,9 +30,6 @@ class Search(SearchCore):
             with_live=with_live,
             max_retries=max_retries,
             proxy=proxy,
-            visitor_data=visitor_data,
-            po_token=po_token,
-            po_token_verifier=po_token_verifier,
         )
 
     async def next(self) -> Dict[str, Any]:
@@ -55,9 +49,6 @@ class VideosSearch(SearchCore):
         with_live: bool = True,
         max_retries: int = 2,
         proxy: Optional[str] = None,
-        visitor_data: Optional[str] = None,
-        po_token: Optional[str] = None,
-        po_token_verifier: Optional[Callable[..., Any]] = None,
     ) -> None:
         self.searchMode = (True, False, False)
         super().__init__(
@@ -70,9 +61,6 @@ class VideosSearch(SearchCore):
             with_live=with_live,
             max_retries=max_retries,
             proxy=proxy,
-            visitor_data=visitor_data,
-            po_token=po_token,
-            po_token_verifier=po_token_verifier,
         )
 
     async def next(self) -> Dict[str, Any]:
@@ -91,9 +79,6 @@ class ChannelsSearch(SearchCore):
         timeout: Optional[float] = None,
         max_retries: int = 2,
         proxy: Optional[str] = None,
-        visitor_data: Optional[str] = None,
-        po_token: Optional[str] = None,
-        po_token_verifier: Optional[Callable[..., Any]] = None,
     ) -> None:
         self.searchMode = (False, True, False)
         super().__init__(
@@ -105,9 +90,6 @@ class ChannelsSearch(SearchCore):
             timeout if timeout is not None else 7.0,
             max_retries=max_retries,
             proxy=proxy,
-            visitor_data=visitor_data,
-            po_token=po_token,
-            po_token_verifier=po_token_verifier,
         )
 
     async def next(self) -> Dict[str, Any]:
@@ -126,9 +108,6 @@ class PlaylistsSearch(SearchCore):
         timeout: Optional[float] = None,
         max_retries: int = 2,
         proxy: Optional[str] = None,
-        visitor_data: Optional[str] = None,
-        po_token: Optional[str] = None,
-        po_token_verifier: Optional[Callable[..., Any]] = None,
     ) -> None:
         self.searchMode = (False, False, True)
         super().__init__(
@@ -140,9 +119,6 @@ class PlaylistsSearch(SearchCore):
             timeout if timeout is not None else 7.0,
             max_retries=max_retries,
             proxy=proxy,
-            visitor_data=visitor_data,
-            po_token=po_token,
-            po_token_verifier=po_token_verifier,
         )
 
     async def next(self) -> Dict[str, Any]:
@@ -163,9 +139,6 @@ class CustomSearch(SearchCore):
         with_live: bool = True,
         max_retries: int = 2,
         proxy: Optional[str] = None,
-        visitor_data: Optional[str] = None,
-        po_token: Optional[str] = None,
-        po_token_verifier: Optional[Callable[..., Any]] = None,
     ) -> None:
         self.searchMode = (True, True, True)
         super().__init__(
@@ -178,9 +151,6 @@ class CustomSearch(SearchCore):
             with_live=with_live,
             max_retries=max_retries,
             proxy=proxy,
-            visitor_data=visitor_data,
-            po_token=po_token,
-            po_token_verifier=po_token_verifier,
         )
 
     async def next(self) -> Dict[str, Any]:
@@ -200,9 +170,6 @@ class ChannelSearch(ChannelSearchCore):
         timeout: Optional[float] = None,
         max_retries: int = 2,
         proxy: Optional[str] = None,
-        visitor_data: Optional[str] = None,
-        po_token: Optional[str] = None,
-        po_token_verifier: Optional[Callable[..., Any]] = None,
     ) -> None:
         super().__init__(
             query,
@@ -213,9 +180,6 @@ class ChannelSearch(ChannelSearchCore):
             timeout if timeout is not None else 7.0,
             max_retries=max_retries,
             proxy=proxy,
-            visitor_data=visitor_data,
-            po_token=po_token,
-            po_token_verifier=po_token_verifier,
         )
 
     async def next(self) -> Dict[str, Any]:

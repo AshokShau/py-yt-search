@@ -1,22 +1,16 @@
 import asyncio
 import copy
-import inspect
 import json
 import logging
 import os
-from typing import Any, Callable, Dict, Mapping, Optional, Tuple
+from typing import Any, Dict, Mapping, Optional, Tuple
 from urllib.parse import urlencode
 import aiohttp
 
 from py_yt.core.constants import CLIENT_PROFILES, requestPayload, searchKey, userAgent
 from py_yt.core.session import (
     get_session,
-    get_session_po_token,
-    get_session_po_token_verifier,
-    get_session_visitor_data,
     get_token_lock,
-    set_session_po_token,
-    set_session_visitor_data,
 )
 
 logger = logging.getLogger(__name__)
@@ -30,18 +24,14 @@ class RequestCore:
         timeout: float = 7.0,
         max_retries: int = 2,
         proxy: Optional[str] = None,
-        visitor_data: Optional[str] = None,
-        po_token: Optional[str] = None,
-        po_token_verifier: Optional[Callable[..., Any]] = None,
     ) -> None:
         self.url: Optional[str] = None
         self.data: Optional[Dict[str, Any]] = None
         self.timeout: float = timeout
         self.max_retries: int = max_retries
         self.proxy_url: Optional[str] = proxy or os.environ.get("PROXY_URL")
-        self.visitor_data: Optional[str] = visitor_data
-        self.po_token: Optional[str] = po_token
-        self.po_token_verifier: Optional[Callable[..., Any]] = po_token_verifier
+        self.visitor_data: Optional[str] = None
+        self.po_token: Optional[str] = None
 
     @staticmethod
     def _build_url(endpoint: str, extra_params: Optional[Dict[str, str]] = None) -> str:
@@ -108,47 +98,11 @@ class RequestCore:
         return None
 
     async def _resolve_tokens(self) -> Tuple[Optional[str], Optional[str]]:
-        visitor_data = self.visitor_data or get_session_visitor_data()
-        po_token = self.po_token or get_session_po_token()
-        verifier = self.po_token_verifier or get_session_po_token_verifier()
-
-        if visitor_data and po_token and not verifier:
-            self.visitor_data = visitor_data
-            self.po_token = po_token
-            return visitor_data, po_token
+        if self.visitor_data and self.po_token:
+            return self.visitor_data, self.po_token
 
         async with get_token_lock():
-            visitor_data = self.visitor_data or get_session_visitor_data()
-            po_token = self.po_token or get_session_po_token()
-            verifier = self.po_token_verifier or get_session_po_token_verifier()
-
-            if verifier and callable(verifier):
-                try:
-                    if inspect.iscoroutinefunction(verifier):
-                        res = await verifier()
-                    else:
-                        res = verifier()
-
-                    if isinstance(res, tuple) and len(res) == 2:
-                        a, b = res
-                        if isinstance(a, str) and isinstance(b, str):
-                            if "Cg" in a or "%3D" in a or len(a) > len(b):
-                                visitor_data, po_token = a, b
-                            else:
-                                po_token, visitor_data = a, b
-                    elif isinstance(res, dict):
-                        po_token = res.get("po_token") or res.get("poToken") or po_token
-                        visitor_data = (
-                            res.get("visitor_data")
-                            or res.get("visitorData")
-                            or visitor_data
-                        )
-                    elif isinstance(res, str):
-                        po_token = res
-                except Exception as e:
-                    logger.warning(f"Error calling po_token_verifier: {e}")
-
-            if not po_token:
+            if not self.po_token:
                 try:
                     from py_yt.botGuard.bot_guard import generate_po_token
 
@@ -157,22 +111,16 @@ class RequestCore:
                         generate_po_token, video_id=video_id
                     )
                     if gen_pot and isinstance(gen_pot, str):
-                        po_token = gen_pot
+                        self.po_token = gen_pot
                 except Exception as e:
                     logger.debug(f"botGuard token generation failed: {e}")
 
-            if not visitor_data:
+            if not self.visitor_data:
                 auto_vd = await self._fetch_automatic_visitor_data()
                 if auto_vd:
-                    visitor_data = auto_vd
+                    self.visitor_data = auto_vd
 
-            self.visitor_data = visitor_data
-            self.po_token = po_token
-            if visitor_data:
-                set_session_visitor_data(visitor_data)
-            if po_token:
-                set_session_po_token(po_token)
-            return visitor_data, po_token
+            return self.visitor_data, self.po_token
 
     def _prepare_request_for_profile(self, profile_name: str) -> Dict[str, str]:
         profile = CLIENT_PROFILES.get(profile_name, CLIENT_PROFILES["WEB"])
@@ -242,7 +190,6 @@ class RequestCore:
                 vd_hdr = response_headers["X-Goog-Visitor-Id"]
                 if vd_hdr:
                     self.visitor_data = vd_hdr
-                    set_session_visitor_data(vd_hdr)
                     return
             data = json.loads(response_bytes.decode("utf-8", errors="ignore"))
             vd: Optional[str] = None
@@ -256,11 +203,10 @@ class RequestCore:
                     vd = extracted_vd
             if vd:
                 self.visitor_data = vd
-                set_session_visitor_data(vd)
         except Exception:
             pass
 
-    async def post_request(self,client_profiles: Optional[list[str]] = None, exc_info: bool = True) -> Optional[aiohttp.ClientResponse]:
+    async def post_request(self, client_profiles: Optional[list[str]] = None, exc_info: bool = True) -> Optional[aiohttp.ClientResponse]:
         """Sends an asynchronous POST request."""
         if not self.url:
             raise ValueError("URL must be set before making a request.")

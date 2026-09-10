@@ -32,24 +32,10 @@ from .exceptions import (
 )
 
 from .handlers import ComponentHandler, RequestHandler
-from .core.session import (
-    close_session,
-    set_session_visitor_data,
-    get_session_visitor_data,
-    set_session_po_token,
-    get_session_po_token,
-    set_session_po_token_verifier,
-    get_session_po_token_verifier,
-)
+from .core.session import close_session
 
 __all__ = [
     "close_session",
-    "set_session_visitor_data",
-    "get_session_visitor_data",
-    "set_session_po_token",
-    "get_session_po_token",
-    "set_session_po_token_verifier",
-    "get_session_po_token_verifier",
     "Video",
     "Playlist",
     "Suggestions",

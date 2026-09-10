@@ -20,17 +20,11 @@ class TranscriptCore(RequestCore):
         timeout: float = 7.0,
         max_retries: int = 2,
         proxy: Optional[str] = None,
-        visitor_data: Optional[str] = None,
-        po_token: Optional[str] = None,
-        po_token_verifier: Optional[Any] = None,
     ) -> None:
         super().__init__(
             timeout=timeout,
             max_retries=max_retries,
             proxy=proxy,
-            visitor_data=visitor_data,
-            po_token=po_token,
-            po_token_verifier=po_token_verifier,
         )
         self.video_link: str = video_link
         self.videoLink: str = video_link
