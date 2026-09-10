@@ -260,7 +260,7 @@ class RequestCore:
         except Exception:
             pass
 
-    async def post_request(self) -> Optional[aiohttp.ClientResponse]:
+    async def post_request(self,client_profiles: Optional[list[str]] = None, exc_info: bool = True) -> Optional[aiohttp.ClientResponse]:
         """Sends an asynchronous POST request."""
         if not self.url:
             raise ValueError("URL must be set before making a request.")
@@ -269,8 +269,10 @@ class RequestCore:
         session = await get_session()
         timeout = aiohttp.ClientTimeout(total=self.timeout)
 
+        profiles = client_profiles or CLIENT_PROFILE_KEYS
+
         for i in range(self.max_retries + 1):
-            profile_name = CLIENT_PROFILE_KEYS[i % len(CLIENT_PROFILE_KEYS)]
+            profile_name = profiles[i % len(profiles)]
             headers = self._prepare_request_for_profile(profile_name)
 
             try:
@@ -300,7 +302,7 @@ class RequestCore:
                         "response_text": e.message,
                         "url": self.url,
                     },
-                    exc_info=is_last_retry,
+                    exc_info=is_last_retry and exc_info,
                 )
             except (aiohttp.ClientError, asyncio.TimeoutError):
                 is_last_retry = i == self.max_retries
@@ -310,7 +312,7 @@ class RequestCore:
                     extra={
                         "request_url": self.url,
                     },
-                    exc_info=is_last_retry,
+                    exc_info=is_last_retry and exc_info,
                 )
             if i < self.max_retries:
                 await asyncio.sleep(2**i)

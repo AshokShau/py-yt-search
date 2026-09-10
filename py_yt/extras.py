@@ -166,11 +166,71 @@ class Hashtag(HashtagCore):
 class Transcript:
     @staticmethod
     async def get(
-        video_link: str, params: Optional[str] = None, proxy: Optional[str] = None
+        video_link: str,
+        params: Optional[str] = None,
+        timeout: float = 7.0,
+        max_retries: int = 2,
+        proxy: Optional[str] = None,
+        visitor_data: Optional[str] = None,
+        po_token: Optional[str] = None,
+        po_token_verifier: Optional[Callable[..., Any]] = None,
     ) -> Dict[str, Any]:
-        transcript_core = TranscriptCore(video_link, params, proxy=proxy)
+        transcript_core = TranscriptCore(
+            video_link=video_link,
+            key=params,
+            timeout=timeout,
+            max_retries=max_retries,
+            proxy=proxy,
+            visitor_data=visitor_data,
+            po_token=po_token,
+            po_token_verifier=po_token_verifier,
+        )
         await transcript_core.create()
         return transcript_core.result
+
+    @staticmethod
+    async def get_transcript(
+        video_link: str,
+        params: Optional[str] = None,
+        timeout: float = 7.0,
+        max_retries: int = 2,
+        proxy: Optional[str] = None,
+        visitor_data: Optional[str] = None,
+        po_token: Optional[str] = None,
+        po_token_verifier: Optional[Callable[..., Any]] = None,
+    ) -> Dict[str, Any]:
+        return await Transcript.get(
+            video_link=video_link,
+            params=params,
+            timeout=timeout,
+            max_retries=max_retries,
+            proxy=proxy,
+            visitor_data=visitor_data,
+            po_token=po_token,
+            po_token_verifier=po_token_verifier,
+        )
+
+
+async def get_transcript(
+    video_link: str,
+    params: Optional[str] = None,
+    timeout: float = 7.0,
+    max_retries: int = 2,
+    proxy: Optional[str] = None,
+    visitor_data: Optional[str] = None,
+    po_token: Optional[str] = None,
+    po_token_verifier: Optional[Callable[..., Any]] = None,
+) -> Dict[str, Any]:
+    return await Transcript.get(
+        video_link=video_link,
+        params=params,
+        timeout=timeout,
+        max_retries=max_retries,
+        proxy=proxy,
+        visitor_data=visitor_data,
+        po_token=po_token,
+        po_token_verifier=po_token_verifier,
+    )
 
 
 class Channel(ChannelCore):
@@ -263,7 +323,7 @@ class Comments(CommentsPaginator):
         timeout: float = 7.0,
     ) -> Any:
         if isinstance(self_or_video_id, CommentsPaginator):
-            return await super(Comments, self_or_video_id).get()
+            return await super().get()
         else:
             paginator = CommentsPaginator(
                 video_link_or_id=self_or_video_id, proxy=proxy, timeout=timeout

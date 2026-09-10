@@ -13,6 +13,7 @@ from .extras import (
     CommentsPaginator,
     RepliesPaginator,
     comments,
+    get_transcript,
 )
 from .search import (
     Search,
@@ -54,6 +55,7 @@ __all__ = [
     "Suggestions",
     "Hashtag",
     "Transcript",
+    "get_transcript",
     "Channel",
     "Recommendations",
     "Comments",
