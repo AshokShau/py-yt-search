@@ -3,3 +3,5 @@ __pycache__
 dist/
 *.egg-info/
 .mypy_cache
+*.mp4
+test.py
