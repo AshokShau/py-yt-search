@@ -28,14 +28,6 @@ CLIENT_PROFILES: Dict[str, Dict[str, str]] = {
         ),
         "clientCode": "1",
     },
-    "ANDROID_VR": {
-        "clientName": "ANDROID_VR",
-        "clientVersion": "1.61.26",
-        "userAgent": (
-            "Mozilla/5.0 (Linux; Android 12; Quest 3) AppleWebKit/537.36 (KHTML, like Gecko) OculusBrowser/32.0.0.3.17 Chrome/122.0.6261.64 Mobile Safari/537.36"
-        ),
-        "clientCode": "93",
-    },
     "MWEB": {
         "clientName": "MWEB",
         "clientVersion": "2.20260821.00.00",
@@ -43,6 +35,24 @@ CLIENT_PROFILES: Dict[str, Dict[str, str]] = {
             "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1"
         ),
         "clientCode": "2",
+        "origin": "https://m.youtube.com",
+    },
+    "WEB_REMIX": {
+        "clientName": "WEB_REMIX",
+        "clientVersion": "1.20250101.01.00",
+        "userAgent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+        ),
+        "clientCode": "67",
+        "origin": "https://music.youtube.com",
+    },
+    "ANDROID_VR": {
+        "clientName": "ANDROID_VR",
+        "clientVersion": "1.61.26",
+        "userAgent": (
+            "Mozilla/5.0 (Linux; Android 12; Quest 3) AppleWebKit/537.36 (KHTML, like Gecko) OculusBrowser/32.0.0.3.17 Chrome/122.0.6261.64 Mobile Safari/537.36"
+        ),
+        "clientCode": "93",
     },
     "TVHTML5": {
         "clientName": "TVHTML5",

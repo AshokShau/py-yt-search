@@ -54,7 +54,32 @@ class RequestHandler(ComponentHandler):
                         key_path,
                     )
                 else:
-                    self.continuationKey = None
+                    # Support tabbedSearchResultsRenderer (e.g., from WEB_REMIX / YouTube Music)
+                    tab_sections = self._get_value(
+                        parsed_data,
+                        [
+                            "contents",
+                            "tabbedSearchResultsRenderer",
+                            "tabs",
+                            0,
+                            "tabRenderer",
+                            "content",
+                            "sectionListRenderer",
+                            "contents",
+                        ],
+                    )
+                    if tab_sections and isinstance(tab_sections, list):
+                        extracted_items = []
+                        for sec in tab_sections:
+                            if isinstance(sec, dict) and itemSectionKey in sec:
+                                for sub_item in sec[itemSectionKey].get("contents", []):
+                                    extracted_items.append(sub_item)
+                            elif isinstance(sec, dict):
+                                extracted_items.append(sec)
+                        self.responseSource = extracted_items
+                        self.continuationKey = None
+                    else:
+                        self.continuationKey = None
         except Exception as e:
             logger.error(
                 "Could not parse YouTube response in RequestHandler", exc_info=True

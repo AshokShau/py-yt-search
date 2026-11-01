@@ -85,6 +85,154 @@ class ComponentHandler:
         }
         return component
 
+    def _get_music_video_component(
+        self, element: Dict[str, Any]
+    ) -> Optional[Dict[str, Any]]:
+        """Parses music item renderers (e.g. from YouTube Music / WEB_REMIX) into standard video components."""
+        vid: Optional[str] = None
+        title: Optional[str] = None
+        channel_name: Optional[str] = None
+        channel_id: Optional[str] = None
+        thumbnails: Optional[List[Dict[str, Any]]] = None
+        view_count_text: Optional[str] = None
+
+        if "musicResponsiveListItemRenderer" in element:
+            mr = element["musicResponsiveListItemRenderer"]
+            vid = self._get_value(mr, ["playlistItemData", "videoId"]) or self._get_value(
+                mr, ["navigationEndpoint", "watchEndpoint", "videoId"]
+            )
+            flex = mr.get("flexColumns", [])
+            if len(flex) > 0:
+                runs0 = self._get_value(
+                    flex[0],
+                    [
+                        "musicResponsiveListItemFlexColumnRenderer",
+                        "text",
+                        "runs",
+                    ],
+                )
+                if runs0 and isinstance(runs0, list):
+                    title = "".join(str(r.get("text", "")) for r in runs0 if isinstance(r, dict))
+            if len(flex) > 1:
+                runs1 = self._get_value(
+                    flex[1],
+                    [
+                        "musicResponsiveListItemFlexColumnRenderer",
+                        "text",
+                        "runs",
+                    ],
+                )
+                if runs1 and isinstance(runs1, list):
+                    for r in runs1:
+                        if isinstance(r, dict):
+                            txt = str(r.get("text", "")).strip()
+                            if "views" in txt.lower():
+                                view_count_text = txt
+                            elif txt not in ["•", "Video", "Song", "Episode", ""]:
+                                if not channel_name:
+                                    channel_name = txt
+                                    b_id = self._get_value(
+                                        r, ["navigationEndpoint", "browseEndpoint", "browseId"]
+                                    )
+                                    if b_id:
+                                        channel_id = str(b_id)
+            thumbnails = self._get_value(
+                mr,
+                [
+                    "thumbnail",
+                    "musicThumbnailRenderer",
+                    "thumbnail",
+                    "thumbnails",
+                ],
+            )
+
+        elif "musicListItemWrapperModel" in element:
+            wrapper = element["musicListItemWrapperModel"]
+            vid = self._get_value(
+                wrapper, ["musicListItemData", "nowPlayingItem", "videoId"]
+            ) or self._get_value(
+                wrapper,
+                [
+                    "musicListItemData",
+                    "onTap",
+                    "innertubeCommand",
+                    "watchEndpoint",
+                    "videoId",
+                ],
+            )
+            vm = wrapper.get("listItemViewModel", {})
+            title = vm.get("title")
+            if isinstance(title, dict):
+                title = self._get_value(title, ["runs", 0, "text"])
+            channel_name = vm.get("subtitle")
+            thumbnails = self._get_value(
+                vm, ["thumbnail", "image", "sources"]
+            )
+
+        elif "listItemViewModel" in element:
+            vm = element["listItemViewModel"]
+            vid = self._get_value(
+                vm,
+                [
+                    "rendererContext",
+                    "commandContext",
+                    "onTap",
+                    "innertubeCommand",
+                    "watchEndpoint",
+                    "videoId",
+                ],
+            ) or self._get_value(
+                vm,
+                [
+                    "onTap",
+                    "innertubeCommand",
+                    "watchEndpoint",
+                    "videoId",
+                ],
+            )
+            title = vm.get("title")
+            if isinstance(title, dict):
+                title = self._get_value(title, ["runs", 0, "text"])
+            channel_name = vm.get("subtitle")
+            thumbnails = self._get_value(
+                vm, ["thumbnail", "image", "sources"]
+            )
+
+        if not vid or not title:
+            return None
+
+        clean_channel = channel_name
+        if clean_channel and "•" in clean_channel:
+            parts = clean_channel.split("•")
+            clean_channel = parts[-1].strip()
+
+        return {
+            "type": "video",
+            "id": vid,
+            "title": title,
+            "publishedTime": None,
+            "duration": None,
+            "viewCount": {
+                "text": view_count_text,
+                "short": view_count_text,
+            },
+            "thumbnails": thumbnails or [],
+            "richThumbnail": None,
+            "descriptionSnippet": None,
+            "channel": {
+                "name": clean_channel,
+                "id": channel_id,
+                "thumbnails": None,
+                "link": build_channel_url(channel_id),
+            },
+            "accessibility": {
+                "title": title,
+                "duration": None,
+            },
+            "link": build_watch_url(vid),
+            "shelfTitle": None,
+        }
+
     def _get_channel_component(self, element: Dict[str, Any]) -> Dict[str, Any]:
         channel = element[channelElementKey]
         cid: Optional[str] = self._get_value(channel, ["channelId"])

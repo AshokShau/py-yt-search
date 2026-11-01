@@ -15,7 +15,8 @@ from py_yt.core.session import (
 
 logger = logging.getLogger(__name__)
 
-CLIENT_PROFILE_KEYS = ["WEB", "MWEB", "ANDROID_VR", "TVHTML5"]
+CLIENT_PROFILE_KEYS = ["WEB", "MWEB", "WEB_REMIX", "ANDROID_VR", "TVHTML5"]
+DEFAULT_YOUTUBE_COOKIE = "CONSENT=PENDING+999; SOCS=CAI; PREF=f2=80000000"
 
 
 class RequestCore:
@@ -124,15 +125,19 @@ class RequestCore:
 
     def _prepare_request_for_profile(self, profile_name: str) -> Dict[str, str]:
         profile = CLIENT_PROFILES.get(profile_name, CLIENT_PROFILES["WEB"])
+        origin = profile.get("origin", "https://www.youtube.com")
         headers: Dict[str, str] = {
+            "Content-Type": "application/json",
             "User-Agent": profile.get("userAgent", userAgent),
-            "Origin": "https://www.youtube.com",
-            "Referer": "https://www.youtube.com/",
+            "Accept": "*/*",
             "Accept-Language": "en-US,en;q=0.9",
             "X-YouTube-Client-Name": profile.get("clientCode", "1"),
             "X-YouTube-Client-Version": profile.get(
                 "clientVersion", "2.20260820.08.00"
             ),
+            "Origin": origin,
+            "Referer": f"{origin}/",
+            "Cookie": DEFAULT_YOUTUBE_COOKIE,
         }
 
         if self.visitor_data:
@@ -162,6 +167,7 @@ class RequestCore:
                 "ANDROID": "3",
                 "IOS": "5",
                 "TVHTML5": "7",
+                "WEB_REMIX": "67",
                 "ANDROID_TESTSUITE": "82",
                 "ANDROID_VR": "93",
             }

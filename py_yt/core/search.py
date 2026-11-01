@@ -173,6 +173,19 @@ class SearchCore(RequestCore, RequestHandler, ComponentHandler):
 
     async def _fallback_search(self) -> None:
         """Attempts to recover search results when YouTube blocks or returns empty results for a query."""
+        try:
+            self._get_request_body()
+            request = await self.post_request(client_profiles=["WEB_REMIX"], exc_info=False)
+            if request:
+                self.response = await request.text()
+                self._parse_source()
+                self._get_components(*self.searchMode)
+                if self.resultComponents:
+                    logger.debug(f"Search fallback succeeded using WEB_REMIX for query: {self.query!r}")
+                    return
+        except Exception as e:
+            logger.debug(f"WEB_REMIX fallback attempt failed for query {self.query!r}: {e}")
+
         candidates: List[str] = []
         try:
             sug_core = SuggestionsCore(
@@ -280,5 +293,19 @@ class SearchCore(RequestCore, RequestHandler, ComponentHandler):
                     ):
                         continue
                     self.resultComponents.append(videoComponent)
+            if (
+                any(
+                    k in element
+                    for k in (
+                        "musicResponsiveListItemRenderer",
+                        "listItemViewModel",
+                        "musicListItemWrapperModel",
+                    )
+                )
+                and find_videos
+            ):
+                musicComponent = self._get_music_video_component(element)
+                if musicComponent:
+                    self.resultComponents.append(musicComponent)
             if len(self.resultComponents) >= self.limit:
                 break
