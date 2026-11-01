@@ -15,6 +15,7 @@ from py_yt.core.constants import (
 )
 from py_yt.core.requests import RequestCore
 from py_yt.core.session import get_session
+from py_yt.core.suggestions import SuggestionsCore
 from py_yt.handlers.componenthandler import ComponentHandler
 from py_yt.handlers.requesthandler import RequestHandler
 
@@ -163,9 +164,63 @@ class SearchCore(RequestCore, RequestHandler, ComponentHandler):
                     finally:
                         self.query = original_query
 
+        if not self.resultComponents and not target_video_id and not self.continuationKey:
+            await self._fallback_search()
+
         return {
             "result": self.resultComponents,
         }
+
+    async def _fallback_search(self) -> None:
+        """Attempts to recover search results when YouTube blocks or returns empty results for a query."""
+        candidates: List[str] = []
+        try:
+            sug_core = SuggestionsCore(
+                language=self.language,
+                region=self.region,
+                timeout=self.timeout,
+                proxy=self.proxy_url,
+            )
+            sug_resp = await sug_core._get(self.query)
+            if isinstance(sug_resp, dict) and "result" in sug_resp:
+                for s in sug_resp["result"]:
+                    if isinstance(s, str):
+                        clean_s = s.strip()
+                        if (
+                            clean_s
+                            and clean_s.lower() != self.query.strip().lower()
+                            and clean_s not in candidates
+                        ):
+                            candidates.append(clean_s)
+        except Exception as e:
+            logger.debug(f"Search suggestions fetch failed during fallback: {e}")
+
+        base_q = self.query.strip()
+        for suffix in ["song", "video", "lyrics"]:
+            suffixed = f"{base_q} {suffix}"
+            if suffixed not in candidates:
+                candidates.append(suffixed)
+
+        orig_query = self.query
+        for cand in candidates[:6]:
+            self.query = cand
+            self.continuationKey = None
+            self.response = None
+            self.responseSource = None
+            self.resultComponents = []
+
+            try:
+                await self._make_request()
+                self._parse_source()
+                self._get_components(*self.searchMode)
+                if self.resultComponents:
+                    logger.debug(f"Search fallback succeeded with query: {cand!r}")
+                    break
+            except Exception as e:
+                logger.debug(f"Fallback attempt failed for candidate {cand!r}: {e}")
+
+        if not self.resultComponents:
+            self.query = orig_query
 
     def _get_components(
         self, find_videos: bool, find_channels: bool, find_playlists: bool
